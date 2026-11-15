@@ -2,7 +2,7 @@
 // de faixa) e um elástico leve: quem está muito na frente alivia, quem ficou pra trás aperta.
 import { carroImg, CORES_CARRO } from './sprites.js';
 
-const PILOTOS = [
+export const PILOTOS = [
   { nome: 'Zé Turbina', pele: '#c07f55', cabelo: '#1d1d1d' },
   { nome: 'Tia Cleide', pele: '#f6c7a1', cabelo: '#c9ced6' },
   { nome: 'Biba Veloz', pele: '#8d5a3b', cabelo: '#2a1408' },
@@ -11,14 +11,17 @@ const PILOTOS = [
 ];
 const FAIXAS = [-0.6, 0, 0.6];
 
-export function criarNpcs(corJogador, rand, COMPR, SEG, cabecasNpc = []) {
+// info (multiplayer): lista com nome e cor de cada carro do computador, escolhida pelo anfitrião
+export function criarNpcs(corJogador, rand, COMPR, SEG, cabecasNpc = [], info = null) {
   const cores = CORES_CARRO.filter(c => c.id !== corJogador).sort(() => rand() - 0.5);
-  return PILOTOS.map((p0, k) => {
+  const lista = info ? info.map((b, k) => ({ ...PILOTOS[k % PILOTOS.length], nome: b.nome, corId: b.cor })) : PILOTOS;
+  return lista.map((p0, k) => {
     const p = { ...p0, cabeca: cabecasNpc[k] || null };
-    const cor = cores[k % cores.length].c;
+    const corObj = p0.corId ? (CORES_CARRO.find(c => c.id === p0.corId) || cores[0]) : cores[k % cores.length];
+    const cor = corObj.c;
     const fila = Math.floor(k / 2), col = k % 2;
     return {
-      ...p, cor: cores[k % cores.length].id,
+      ...p, cor: corObj.id,
       imgs: [-1, 0, 1].map(v => carroImg(cor, v, p.pele, p.cabelo, p.cabeca)),
       // largada: em filas de 2 na frente do jogador
       dist: (5 - fila * 2 - col) * SEG * 1.6 + (k === 4 ? 0 : 0),

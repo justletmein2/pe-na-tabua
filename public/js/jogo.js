@@ -1,12 +1,13 @@
 // Pé na Tábua — corrida contra o computador: uma pista, 3 voltas, perigos malucos, clima.
-import { SEG, LARG, CORES_PRAIA, criarPistaPraia } from './pista.js';
-import { criarSprites, criarFundo, criarExtras, desenharCarro, carroImg, CARRO_W, CARRO_H, CORES_CARRO, corPorId } from './sprites.js';
+import { SEG, LARG, criarPista } from './pista.js';
+import { tema as temaDe, PISTAS, nomePista } from './temas.js';
+import { criarExtras, desenharCarro, carroImg, CARRO_W, CARRO_H, CORES_CARRO, corPorId } from './sprites.js';
 import { volante, ligar, calibrar, atualizar as atualizarVolante, giroAtual, salvar as salvarVolante, restaurarPadrao } from './volante.js';
 import * as som from './som.js';
 import * as musica from './musica.js';
 import { Clima, sortearClima, NOMES as NOMES_CLIMA } from './clima.js';
 import { Perigos, TIPOS as TIPOS_PERIGO } from './perigos.js';
-import { criarNpcs, atualizarNpcs } from './npcs.js';
+import { criarNpcs, atualizarNpcs, PILOTOS } from './npcs.js';
 import { Minimapa } from './minimapa.js';
 import * as boneco from './boneco.js';
 import * as rede from './rede.js';
@@ -34,28 +35,31 @@ const TURBO_V = 1.3, TURBO_ENCHE = 14;
 const KMH = 240;
 const GIRO_MAX = 35;                        // até quantos graus o cenário compensa o giro
 
-const CORES_NEVE = {
-  ...CORES_PRAIA,
-  claro: { estrada: '#8a8f9a', chao: '#f4f8ff', zebra: '#ffffff', faixa: '#ffffff' },
-  escuro: { estrada: '#838893', chao: '#e1e9f5', zebra: '#d8312f', faixa: null },
-};
-
-const segs = criarPistaPraia();
-const N = segs.length;
-const COMPR = N * SEG;
-const SPR = criarSprites();
 const EXTRAS = criarExtras();
 const LARGADA = Math.floor(Z_JOG / SEG);
 const clima = new Clima();
-const perigos = new Perigos(segs, EXTRAS);
+// pista atual (troca quando escolhe outra)
+let segs = [], N = 1, COMPR = SEG, SPR = {}, TEMA = null, CORES_T = null, CORES_NEVE_T = null, perigos = null, pistaAtual = null;
 let minimapa = null;
+function carregarPista(id) {
+  if (!PISTAS.includes(id)) id = 'praia';
+  if (pistaAtual === id) return;
+  TEMA = temaDe(id);
+  segs = criarPista(id, TEMA); N = segs.length; COMPR = N * SEG; SPR = TEMA.sprites;
+  CORES_T = TEMA.cores;
+  CORES_NEVE_T = { ...CORES_T, calcadao: false, claro: { ...CORES_T.claro, chao: '#f4f8ff' }, escuro: { ...CORES_T.escuro, chao: '#e1e9f5' } };
+  fundo = TEMA.fundo;
+  perigos = new Perigos(segs, EXTRAS, TEMA);
+  minimapa = new Minimapa($('minimapa'), segs);
+  pistaAtual = id; gradCache = null;
+}
 let rand = Math.random;
 
 let W = 384, H = 216, CW = 384, CH = 216, MX = 0, MY = 0, ESC_CSS = 1;
 let fundo = null;
 
 // ---------- preferências ----------
-const pref = { cor: 'vermelho', nivelar: true, bolinhas: false };
+const pref = { cor: 'vermelho', nivelar: true, bolinhas: false, pista: 'praia', ajuda: true };
 try { Object.assign(pref, JSON.parse(localStorage.getItem('pnt-pref') || '{}')); } catch {}
 const salvarPref = () => { try { localStorage.setItem('pnt-pref', JSON.stringify(pref)); } catch {} };
 
@@ -70,10 +74,10 @@ const E = {
   rostoAte: 0, reclamouEm: -9, cabeca: { x: 0, y: 0 }, luzesCarro: [],
   virar: 0, roda: 0, prof: PROF_BASE, tremor: 0, angCena: 0, giroFiltro: 0, imuneAte: -9, fugir: 0,
   npcs: [], posicao: 6, musica: 0, terminouEm: null,
-  online: false, remotos: [],
+  online: false, remotos: [], bots: [], ajuda: true, ar: null, loop: null, loopAng: 0, padAte: 0, vacuo: false, ajudaK: 0,
 };
 // os carros que aparecem na pista: adversários do computador (sozinho) ou os amigos (online)
-const carros = () => (E.online ? E.remotos : E.npcs);
+const carros = () => (E.online ? E.remotos.concat(E.bots) : E.npcs);
 // perfil do Forma Palavras (gamertag, boneco, XP)
 let PERFIL = { tag: '', look: null, xp: 0, ach: {} };
 let cabecaJog = null, cabecasNpc = [];
@@ -100,12 +104,12 @@ function redimensionar() {
     left: (innerWidth - CW * ESC_CSS) / 2 + 'px', top: (innerHeight - CH * ESC_CSS) / 2 + 'px',
   });
   g.imageSmoothingEnabled = false;
-  fundo = criarFundo(Math.round(H / 2));
   clima.preparar(CW, CH);
   gradCache = null;
   if (minimapa) minimapa.ajustar();
 }
 let gradCache = null;
+carregarPista(pref.pista);
 addEventListener('resize', redimensionar);
 redimensionar();
 
@@ -128,18 +132,36 @@ function desenharFatia(s, limite, cores) {
   if (base < topo) return;
   const c = s.escuro ? cores.escuro : cores.claro;
   const corPerigo = s.perigo ? perigos.cor(s.perigo, s, E.t) : null;
+  const pisca = Math.floor(E.t * 10) % 2;
   for (let y = topo; y <= base; y++) {
     const t = (y1 - y) / (y1 - y2);
     const cx = a.x + (b.x - a.x) * t, w = a.w + (b.w - a.w) * t;
     const zeb = w / 6;
     g.fillStyle = c.chao; g.fillRect(-MX, y, CW, 1);
+    if (cores.calcadao) {
+      // calçadão de ondinhas pretas e brancas do lado esquerdo
+      const ond = Math.floor(s.i / 2 + Math.sin((s.i + t) * 0.9) * 1.5) % 2;
+      g.fillStyle = ond ? '#2a2a2a' : '#f4f4f4'; g.fillRect(Math.round(cx - w * 1.9), y, Math.round(w * 0.75), 1);
+    }
     g.fillStyle = c.zebra; g.fillRect(Math.round(cx - w - zeb), y, Math.round(zeb), 1); g.fillRect(Math.round(cx + w), y, Math.round(zeb), 1);
     if (s.i === LARGADA) {
       const n = 10, lw = (2 * w) / n, linha = t < 0.5 ? 0 : 1;
       for (let k = 0; k < n; k++) { g.fillStyle = (k + linha) % 2 ? '#111' : '#fff'; g.fillRect(Math.round(cx - w + k * lw), y, Math.ceil(lw), 1); }
     } else {
-      g.fillStyle = c.estrada; g.fillRect(Math.round(cx - w), y, Math.round(2 * w), 1);
-      if (c.faixa) { const fw = Math.max(1, w / 40); g.fillStyle = c.faixa; g.fillRect(Math.round(cx - fw / 2), y, Math.round(fw), 1); }
+      if (s.rampa) {
+        // rampa listrada de amarelo e preto
+        const n = 8, lw = (2 * w) / n;
+        for (let k = 0; k < n; k++) { g.fillStyle = (k + (s.i % 2)) % 2 ? '#222' : '#ffd23f'; g.fillRect(Math.round(cx - w + k * lw), y, Math.ceil(lw), 1); }
+      } else {
+        g.fillStyle = s.loop ? '#3a6fd8' : c.estrada; g.fillRect(Math.round(cx - w), y, Math.round(2 * w), 1);
+        if (c.faixa) { const fw = Math.max(1, w / 40); g.fillStyle = c.faixa; g.fillRect(Math.round(cx - fw / 2), y, Math.round(fw), 1); }
+      }
+      if (s.turbo != null) {
+        // setas de turbo: "^" no chão
+        const meio = cx + s.turbo * w, aw = w * 0.22 * t, ew = Math.max(1, w * 0.07);
+        g.fillStyle = pisca ? '#ffd23f' : '#ff7a1a';
+        g.fillRect(Math.round(meio - aw - ew / 2), y, Math.round(ew), 1); g.fillRect(Math.round(meio + aw - ew / 2), y, Math.round(ew), 1);
+      }
     }
     if (corPerigo) {
       const h = s.perigo;
@@ -156,13 +178,13 @@ function camadaFundo(img, desloc, y) {
 
 function desenhar(dt) {
   const hz = Math.round(H / 2);
-  const cores = clima.neve ? CORES_NEVE : CORES_PRAIA;
+  const cores = clima.neve ? CORES_NEVE_T : CORES_T;
   // tremida (batidas e velocidade alta)
   const tx = E.tremor > 0 ? Math.round((Math.random() - 0.5) * E.tremor * 6) : 0;
   const ty = E.tremor > 0 ? Math.round((Math.random() - 0.5) * E.tremor * 6) : (E.vel > V_MAX * 0.97 && Math.random() < 0.3 ? 1 : 0);
   g.setTransform(1, 0, 0, 1, MX + tx, MY + ty);
   g.fillStyle = cores.claro.chao; g.fillRect(-MX - 8, hz, CW + 16, H + MY - hz + 8);
-  const ceu = clima.ceu();
+  const ceu = ((clima.hora === 'dia' || TEMA.id === 'ia') && clima.tempo === 'limpo') ? [CORES_T.ceuTopo, CORES_T.ceuBaixo] : clima.ceu();
   const chave = ceu.join() + MY;
   if (!gradCache || gradCache.chave !== chave) {
     const gr = g.createLinearGradient(0, -MY, 0, hz);
@@ -172,14 +194,16 @@ function desenhar(dt) {
   g.fillStyle = gradCache.gr; g.fillRect(-MX - 8, -MY - 8, CW + 16, hz + MY + 8);
   if (clima.hora === 'dia' && clima.tempo === 'limpo') { g.fillStyle = '#fff6b0'; g.fillRect(W - 70, 18, 22, 22); g.fillStyle = '#ffffff'; g.fillRect(W - 66, 22, 14, 14); }
   if (clima.hora === 'tarde' && clima.tempo === 'limpo') { g.fillStyle = '#ff7a3a'; g.fillRect(W - 90, hz - 40, 30, 30); g.fillStyle = '#ffc070'; g.fillRect(W - 86, hz - 36, 22, 22); }
-  if (clima.tempo !== 'chuva' || clima.intens < 0.5) camadaFundo(fundo.nuvens, E.ceu, 0);
+  if (TEMA.fogos) fogosArtificio(hz);
+  if (fundo.ceu && (clima.tempo !== 'chuva' || clima.intens < 0.5)) camadaFundo(fundo.ceu, E.ceu, 0);
   perigos.fundo(g, W, H, E.t);
-  camadaFundo(fundo.morros, E.morros, hz - fundo.morros.height + 2);
-  camadaFundo(fundo.mar, E.morros * 0.5, hz - 4);
+  camadaFundo(fundo.longe, E.morros, hz - fundo.longe.height + 2);
+  if (fundo.faixa) camadaFundo(fundo.faixa, E.morros * 0.5, hz - 4);
 
   const base = segEm(E.pos), basePct = (E.pos % SEG) / SEG;
   const jSeg = segEm(E.pos + Z_JOG), jPct = ((E.pos + Z_JOG) % SEG) / SEG;
-  const jY = jSeg.p1.mundo.y + (jSeg.p2.mundo.y - jSeg.p1.mundo.y) * jPct;
+  let jY = jSeg.p1.mundo.y + (jSeg.p2.mundo.y - jSeg.p1.mundo.y) * jPct;
+  if (E.ar) jY = Math.max(jY, E.ar.y);     // voando: a câmera sobe junto com o carro
   let limite = H + MY, x = 0, dx = -(base.curva * basePct);
   const vistos = [];
   for (let n = 0; n < DISTANCIA; n++) {
@@ -217,13 +241,13 @@ function desenhar(dt) {
         const dw = tipo.mundo * LARG * esc * W / 2;
         if (dw < 1) continue;
         const dh = dw * tipo.img.height / tipo.img.width;
-        const sx = s.p1.tela.x + esc * sp.offset * LARG * W / 2 + (sp.offset < 0 ? -dw : 0);
+        const sx = s.p1.tela.x + esc * sp.offset * LARG * W / 2 + (sp.centro ? -dw / 2 : sp.offset < 0 ? -dw : 0);
         const sy = s.p1.tela.y - dh;
         if (sy >= s.limite || sx > W + MX || sx + dw < -MX) continue;
         g.save(); g.beginPath(); g.rect(-MX, -MY, CW, s.limite + MY); g.clip();
         g.drawImage(tipo.img, Math.round(sx), Math.round(sy), Math.round(dw), Math.round(dh));
         g.restore();
-        if (tipo.img.luz) luzes.push([sx + tipo.img.luz.x * dw, sy + tipo.img.luz.y * dh, dw * 0.9, 'rgba(255,240,180,A)']);
+        if (tipo.img.luz) luzes.push([sx + tipo.img.luz.x * dw, sy + tipo.img.luz.y * dh, dw * 0.9, tipo.img.luz.cor || 'rgba(255,240,180,A)']);
       }
     }
     const dyn = dinamicos.get(s.i);
@@ -258,7 +282,29 @@ function desenhar(dt) {
   clima.farois(g, W, H, H - CARRO_H * escalaCarro());
   clima.acender(g, luzes);
   clima.particulasDesenhar(g, -MX, -MY, CW, CH, dt);
+  if (TEMA.cinzas) cinzas();
   linhasVelocidade();
+}
+
+// fogos de artifício no céu do festival
+const fogos = [];
+function fogosArtificio(hz) {
+  if (Math.random() < 0.03 && fogos.length < 4) fogos.push({ x: Math.random() * W, y: 10 + Math.random() * (hz * 0.5), t: 0, cor: ['#ff5fa2', '#ffd23f', '#36b6ff', '#2fd47a', '#ff7a1a'][Math.floor(Math.random() * 5)] });
+  for (let i = fogos.length - 1; i >= 0; i--) {
+    const f = fogos[i]; f.t += 1 / 60;
+    if (f.t > 1.2) { fogos.splice(i, 1); continue; }
+    g.fillStyle = f.cor; g.globalAlpha = Math.max(0, 1 - f.t / 1.2);
+    for (let k = 0; k < 14; k++) { const a = k / 14 * Math.PI * 2, r = 4 + f.t * 26; g.fillRect(Math.round(f.x + Math.cos(a) * r), Math.round(f.y + Math.sin(a) * r + f.t * f.t * 8), 2, 2); }
+    g.globalAlpha = 1;
+  }
+}
+// cinzas caindo na cidade destruída
+function cinzas() {
+  g.fillStyle = 'rgba(200,190,190,.7)';
+  for (let i = 0; i < 40; i++) {
+    const x = ((i * 97 + E.t * (20 + i % 7 * 6)) % (CW)) - MX, y = ((i * 53 + E.t * (30 + i % 5 * 9)) % CH) - MY;
+    g.fillRect(Math.round(x), Math.round(y), 1, 1);
+  }
 }
 
 function linhasVelocidade() {
@@ -360,41 +406,70 @@ function atualizar(dt) {
   const jSeg = segs[iJog];
   const pct = E.vel / V_MAX;
   const dx = dt * 2 * pct;
+  // rampa: no topo o carro voa (a pista despenca embaixo dele)
+  const yChao = jSeg.p1.mundo.y + (jSeg.p2.mundo.y - jSeg.p1.mundo.y) * (((E.pos + Z_JOG) % SEG) / SEG);
+  if (!E.ar && jSeg.salto && E.vel > V_MAX * 0.25) { E.ar = { y: yChao, vy: E.vel * 0.34 }; som.turboSom(); if (correndo) reclamar(null, ['Uhuuul!', 'Eu tô voando!', 'Segura peão!', 'Aperta o cinto!']); }
+  if (E.ar) {
+    E.ar.vy -= 9000 * dt; E.ar.y += E.ar.vy * dt;
+    if (E.ar.vy < 0 && E.ar.y <= yChao) { E.ar = null; E.tremor = 0.8; som.batida(); }
+  }
+  const noAr = !!E.ar;
+  // loop: a tela dá uma volta inteira enquanto o carro passa
+  if (jSeg.loop && !E.loop && iJog - jSeg.loop.ini < 4 && E.vel > V_MAX * 0.35) E.loop = { t0: E.t, dur: (jSeg.loop.n * SEG) / E.vel };
+  if (E.loop) {
+    const f = (E.t - E.loop.t0) / E.loop.dur;
+    if (f >= 1) { E.loop = null; E.loopAng = 0; } else E.loopAng = 360 * (0.5 - Math.cos(f * Math.PI) / 2);
+  }
   if (E.girando > 0) { E.girando -= dt; E.x += (E.t < E.imuneAte ? E.fugir * 1.1 : -Math.sign(E.x) * 0.6) * dt; }
-  else E.x += dx * dir;
-  E.x -= dx * pct * jSeg.curva * CENTRIFUGA * clima.aderencia;
+  else if (E.loop) E.x -= E.x * Math.min(1, dt * 3);
+  else E.x += dx * dir * (noAr ? 0.5 : 1);
+  if (!noAr && !E.loop) E.x -= dx * pct * jSeg.curva * CENTRIFUGA * clima.aderencia;
+  // setas de turbo no chão
+  if (!noAr && jSeg.turbo != null && Math.abs(E.x - jSeg.turbo) < 0.4) { if (E.t > E.padAte) som.turboSom(); E.padAte = E.t + 1.2; }
+  const pad = E.t < E.padAte;
+  // vácuo: colado atrás de outro carro, anda um pouco mais e enche o turbo mais rápido
+  E.vacuo = false;
+  if (!noAr && correndo) for (const n of carros()) { if (n.oculto) continue; const dz = n.dist - distJog(); if (dz > 300 && dz < 3000 && Math.abs(n.x - E.x) < 0.3) { E.vacuo = true; break; } }
+  // ajuda pra quem ficou pra trás (deixa a corrida apertada)
+  E.ajudaK = 0;
+  if (E.ajuda && correndo && E.terminouEm == null) {
+    let lider = distJog(); for (const n of carros()) if (!n.oculto && n.terminou == null) lider = Math.max(lider, n.dist);
+    const gap = (lider - distJog()) / SEG;
+    if (gap > 25) E.ajudaK = Math.min(1, (gap - 25) / 200);
+  }
 
   // abertura da câmera: mais rápido = visão mais aberta (sensação de velocidade)
   const fov = FOV_BASE + 10 * Math.min(1.2, pct) + (turboAtivo ? 6 : 0);
   E.prof += (1 / Math.tan(fov / 2 * Math.PI / 180) - E.prof) * Math.min(1, dt * 3);
 
-  const vmax = turboAtivo ? V_MAX * TURBO_V : V_MAX;
+  const vmax = V_MAX * (turboAtivo ? TURBO_V : 1) * (pad ? 1.2 : 1) * (E.vacuo ? 1.06 : 1) * (1 + 0.08 * E.ajudaK);
   if (E.girando > 0) E.vel += AREIA_DESACEL * dt;
-  else if (acel || turboAtivo) E.vel += (turboAtivo ? ACEL * 2 : ACEL) * dt;
-  else E.vel += SOLTO * dt;
-  const fora = E.x < -1 || E.x > 1;
+  else if (acel || turboAtivo || pad) E.vel += (turboAtivo || pad ? ACEL * 2 : ACEL) * dt;
+  else if (!noAr) E.vel += SOLTO * dt;
+  const fora = !noAr && (E.x < -1 || E.x > 1);
   if (fora && E.vel > AREIA_LIMITE) E.vel += AREIA_DESACEL * dt;
-  E.vel = Math.max(0, Math.min(E.vel, vmax));
-  if (!turboAtivo && E.vel > V_MAX) E.vel += SOLTO * dt * 2;
+  if (E.vel > vmax) E.vel = Math.max(vmax, E.vel + SOLTO * dt * 2);
+  E.vel = Math.max(0, E.vel);
 
   const lc = largCarro() * 0.9;
   // batidas nos objetos da beira
   if (fora && E.girando <= 0) {
     for (const sp of jSeg.sprites) {
       const tipo = SPR[sp.tipo];
+      if (sp.centro || !tipo.bate) continue;
       const centro = sp.offset < 0 ? sp.offset - tipo.mundo / 2 : sp.offset + tipo.mundo / 2;
       if (sobrepoe(E.x, lc, centro, tipo.mundo * tipo.bate)) { rodar(0.25, 1); reclamar('batida'); break; }
     }
   }
   // perigos
-  if (E.girando <= 0 && correndo && E.t > E.imuneAte) {
+  if (E.girando <= 0 && correndo && E.t > E.imuneAte && !noAr) {
     const h = perigos.bateu(iJog, E.x, lc, E.t);
     if (h) {
       // fica invencível por 2 segundos e é empurrado pro lado livre, pra conseguir sair
       E.imuneAte = E.t + 2; E.fugir = -h.lado;
       if (h.tipo === 'onda') { E.vel *= 0.45; E.x += h.lado * 0.5; E.tremor = 0.8; som.batida(); }
       else rodar(h.tipo === 'caminhao' ? 0.15 : 0.3, 1.2);
-      reclamar(null, TIPOS_PERIGO[h.tipo].frases);
+      reclamar(null, perigos.info(h.tipo).frases);
     }
   }
   if (fora && correndo) { if (!E.areiaDesde) E.areiaDesde = E.t; else if (E.t - E.areiaDesde > 1.2) reclamar('areia'); }
@@ -403,9 +478,17 @@ function atualizar(dt) {
   // adversários
   const dj = distJog();
   if (!E.online) atualizarNpcs(E.npcs, dt, { segs, SEG, COMPR, V_MAX, distJog: E.terminouEm != null ? -1e12 : dj, correndo: correndo || E.fase === 'fim', perigos, t: E.t, rand, VOLTAS, tempo: E.tempo });
-  else atualizarRemotos(dt);
+  else {
+    atualizarRemotos(dt);
+    // o anfitrião é quem "pilota" os carros do computador e manda pra todo mundo
+    if (M.host && E.npcs.length) {
+      let lider = E.terminouEm != null ? -1e12 : dj;
+      for (const r of E.remotos) if (!r.oculto && r.terminou == null) lider = Math.max(lider, r.dist);
+      atualizarNpcs(E.npcs, dt, { segs, SEG, COMPR, V_MAX, distJog: lider, correndo: correndo || E.fase === 'fim', perigos, t: E.t, rand, VOLTAS, tempo: E.tempo });
+    }
+  }
   for (const n of carros()) {
-    if (E.terminouEm != null) break;
+    if (E.terminouEm != null || noAr) break;
     if (n.oculto || (E.online && n.terminou != null)) continue;
     const dz = n.dist - dj;
     if (Math.abs(dz) < 280 && Math.abs(n.x - E.x) < lc && E.t > (n.bateuEm || 0) + 0.6) {
@@ -414,7 +497,7 @@ function atualizar(dt) {
       E.vel *= 0.85;
       const lado = Math.sign(E.x - n.x) || 1;
       E.x += lado * 0.18;
-      if (!E.online) { n.vel *= 0.85; n.x -= lado * 0.18; n.alvoX = n.x; }
+      if (!n.uid && n.alvoX !== undefined) { n.vel *= 0.85; n.x -= lado * 0.18; n.alvoX = n.x; }
       E.tremor = 0.5; som.batida(); reclamar('carro');
     }
   }
@@ -422,7 +505,7 @@ function atualizar(dt) {
 
   // turbo: enche quando fica na pista sem bater
   if (correndo && !turboAtivo) {
-    if (!fora && E.girando <= 0 && pct > 0.3) E.turbo = Math.min(1, E.turbo + dt / TURBO_ENCHE);
+    if (!fora && E.girando <= 0 && pct > 0.3) E.turbo = Math.min(1, E.turbo + dt / TURBO_ENCHE * (1 + (E.vacuo ? 1 : 0) + 2 * E.ajudaK));
     else if (fora) E.turbo = Math.max(0, E.turbo - dt / 10);
   }
   if (E.botaoTurbo || teclas.Space || teclas.KeyX) usarTurbo();
@@ -481,6 +564,8 @@ function hud() {
   $('hudMelhor').textContent = E.voltas.length ? fmt(Math.min(...E.voltas)) : '–';
   $('hudVel').textContent = Math.round(E.vel / V_MAX * KMH);
   $('hudPos').textContent = E.posicao + 'º';
+  const extra = [E.ar ? '✈️ VOANDO!' : '', E.loop ? '🌀 LOOP!' : '', E.t < E.padAte ? '⚡ TURBO!' : '', E.vacuo ? '💨 VÁCUO' : '', E.ajudaK > 0.05 ? '🚀 AJUDA' : ''].filter(Boolean).join(' ');
+  if ($('hudExtra').textContent !== extra) $('hudExtra').textContent = extra;
   $('hudPosTotal').textContent = '/' + (carros().filter(n => !n.oculto).length + 1);
   $('barraTurboCheia').style.width = (E.t < E.turboAte ? 100 : E.turbo * 100) + '%';
   $('btnTurbo').classList.toggle('pronto', E.turbo >= 0.2 && E.t >= E.turboAte);
@@ -492,7 +577,7 @@ function hud() {
   const p = E.fase === 'correndo' ? perigos.aFrente(iJog, 260) : null;
   const el = $('perigo');
   if (p) {
-    const tp = TIPOS_PERIGO[p.h.tipo];
+    const tp = perigos.info(p.h.tipo);
     el.hidden = false;
     el.className = p.h.lado < 0 ? 'esq' : 'dir';
     $('perigoIcone').textContent = tp.icone;
@@ -634,7 +719,22 @@ function aleatorio(semente) {
 }
 
 let contTimer = null;
+// clima combinando com a pista
+function climaDaPista(c, r = Math.random) {
+  c = { ...c };
+  if (TEMA.noite) c.hora = 'noite';
+  if (TEMA.id === 'ia') { c.hora = 'dia'; if (c.tempo === 'neve') c.tempo = 'limpo'; }
+  if (TEMA.chuvaExtra && c.tempo === 'limpo' && r() < TEMA.chuvaExtra) c.tempo = 'chuva';
+  if ((TEMA.id === 'rio' || TEMA.id === 'festival') && c.tempo === 'neve' && r() < 0.7) c.tempo = 'limpo';
+  return c;
+}
+function musicaDaPista(c, r = Math.random) {
+  const lista = TEMA.musicas;
+  if (r() < 0.8) return lista[Math.floor(r() * lista.length)];
+  return Math.floor(r() * 7);
+}
 function zerarCorrida() {
+  Object.assign(E, { ar: null, loop: null, loopAng: 0, padAte: 0, vacuo: false, ajudaK: 0 });
   Object.assign(E, { pos: 0, x: 0, vel: 0, volta: 1, tempo: 0, tempoVolta: 0, voltas: [], turbo: 0, turboAte: 0, girando: 0, rostoAte: 0, pausado: false, tremor: 0, terminouEm: null, t: 0, reclamouEm: -9, imuneAte: -9, fugir: 0, giroFiltro: 0, acel: false });
 }
 function novaCorrida() {
@@ -642,20 +742,21 @@ function novaCorrida() {
   musica.parar();
   rand = params.get('semente') ? aleatorio(sementeDe(params.get('semente'))) : Math.random;
   zerarCorrida();
+  carregarPista(pref.pista);
   perigos.aoCriar = null;
-  E.online = false; E.remotos = [];
+  E.online = false; E.remotos = []; E.bots = [];
   E.npcs = criarNpcs(pref.cor, rand, COMPR, SEG, cabecasNpc);
   E.posicao = E.npcs.length + 1;
   perigos.reiniciar();
   // clima: sorteado (ou forçado pelo endereço, pra teste: ?clima=noite-chuva)
-  let c = sortearClima(rand);
+  carregarPista(pref.pista);
+  E.ajuda = pref.ajuda;
+  let c = climaDaPista(sortearClima(rand), rand);
   if (params.get('clima')) { const [h, t] = params.get('clima').split('-'); c = { hora: h || 'dia', tempo: t || 'limpo' }; }
   clima.definir(c, CW, CH);
-  E.musica = params.get('musica') != null ? +params.get('musica')
-    : rand() < 0.65 ? (c.hora === 'noite' ? 1 : c.tempo === 'chuva' ? 3 : c.tempo === 'neve' ? 2 : 0) : Math.floor(rand() * 4);
+  E.musica = params.get('musica') != null ? +params.get('musica') : musicaDaPista(c, rand);
   mostrar(null);
   $('hud').hidden = false; $('controles').hidden = !TOQUE && E.modo === 'teclado';
-  if (!minimapa) minimapa = new Minimapa($('minimapa'), segs);
   minimapa.ajustar();
   E.fase = 'contagem';
   let n = 3;
@@ -712,6 +813,7 @@ function preencherAjustes() {
   $('cfgMusica').checked = musica.musicaLigada();
   $('cfgNivelar').checked = pref.nivelar;
   $('cfgBolinhas').checked = pref.bolinhas;
+  $('cfgAjuda').checked = pref.ajuda;
 }
 for (const [id, k, f] of CAMPOS) {
   $(id).oninput = () => { volante.cfg[k] = +$(id).value; $('v' + id.slice(3)).textContent = f(volante.cfg[k]); salvarVolante(); };
@@ -719,6 +821,7 @@ for (const [id, k, f] of CAMPOS) {
 $('cfgInverter').onchange = () => { volante.cfg.inverter = $('cfgInverter').checked; salvarVolante(); };
 $('cfgSom').onchange = () => { som.ligarSom($('cfgSom').checked); };
 $('cfgMusica').onchange = () => { musica.ligarMusica($('cfgMusica').checked); };
+$('cfgAjuda').onchange = () => { pref.ajuda = $('cfgAjuda').checked; salvarPref(); if (!E.online) E.ajuda = pref.ajuda; };
 $('cfgBolinhas').onchange = () => { pref.bolinhas = $('cfgBolinhas').checked; salvarPref(); };
 $('cfgNivelar').onchange = () => { pref.nivelar = $('cfgNivelar').checked; salvarPref(); redimensionar(); };
 $('btnPadrao').onclick = () => { restaurarPadrao(); preencherAjustes(); toast('Ajustes de fábrica'); };
@@ -788,7 +891,8 @@ function girarCena(dt) {
   const k = Math.min(1, dt * 9);
   E.giroFiltro += (alvo - E.giroFiltro) * k;
   E.angCena += (E.giroFiltro - E.angCena) * k;
-  tela.style.transform = Math.abs(E.angCena) > 0.05 ? `rotate(${(-E.angCena).toFixed(2)}deg)` : '';
+  const ang = -E.angCena + (E.loopAng || 0);
+  tela.style.transform = Math.abs(ang) > 0.05 ? `rotate(${ang.toFixed(2)}deg)` : '';
 }
 
 // ---------- perfil do Forma Palavras ----------
@@ -919,12 +1023,18 @@ function sairDaSala() {
 }
 function irInicio() {
   sairDaSala(); musica.parar();
-  E.fase = 'inicio';
+  E.fase = 'inicio'; E.loopAng = 0; E.ar = null;
+  carregarPista(pref.pista);
   $('hud').hidden = true; $('controles').hidden = true; $('contagem').hidden = true;
   montarCores(); desenharPiloto(); mostrar('telaInicio');
 }
 $('btnSairSala').onclick = irInicio;
 $('btnComoJogar').onclick = () => mostrar('telaComo');
+function mostrarPista() { $('pistaNome').textContent = nomePista(pref.pista); }
+function trocarPista(d) { const i = PISTAS.indexOf(pref.pista); pref.pista = PISTAS[(i + d + PISTAS.length) % PISTAS.length]; salvarPref(); carregarPista(pref.pista); mostrarPista(); }
+$('pistaAnt').onclick = () => trocarPista(-1);
+$('pistaProx').onclick = () => trocarPista(1);
+mostrarPista();
 $('btnFecharComo').onclick = () => mostrar('telaInicio');
 $('btnAjustesMenu').onclick = () => { preencherAjustes(); $('btnReiniciar').hidden = true; mostrar('telaAjustes'); };
 $('btnSairSala2').onclick = irInicio;
@@ -959,18 +1069,35 @@ function desenharSala(msg) {
   const lista = Object.entries(M.players).filter(([, p]) => p.online);
   $('salaJogadores').innerHTML = lista.map(([id, p]) => `<li>${p.look ? boneco.frenteSVG(p.look, 44) : '<span class="semB">🙂</span>'}<i style="background:${corPorId(p.cor).c[0]}"></i><b>${esc(p.name || '?')}</b>${M.meta && id === M.meta.host ? '<small>anfitrião</small>' : ''}${id === rede.meuId() ? '<small>você</small>' : ''}</li>`).join('') || '<li>Entrando…</li>';
   $('btnComecar').hidden = !M.host || (M.meta && M.meta.status !== 'lobby' && msg);
+  const m = M.meta || {};
+  $('salaPista').textContent = nomePista(m.pista || 'praia');
+  $('salaBots').textContent = (m.bots ?? 3) === 0 ? 'nenhum' : (m.bots ?? 3);
+  $('salaAjuda').textContent = m.ajuda === false ? 'desligada' : 'ligada';
+  document.querySelectorAll('.soAnfitriao').forEach(b => { b.hidden = !M.host; });
   $('salaEspera').textContent = msg || (M.host
     ? (lista.length < 2 ? 'Mande o link pros amigos! (Dá pra começar sozinho pra testar.)' : 'Todo mundo dentro? Pode começar!')
     : 'Esperando o anfitrião começar a corrida…');
 }
+const mudarMeta = d => { if (M.host && M.code) rede.atualizarMeta(M.code, d).catch(() => {}); };
+$('salaPistaAnt').onclick = () => { const i = PISTAS.indexOf(M.meta.pista || 'praia'); mudarMeta({ pista: PISTAS[(i - 1 + PISTAS.length) % PISTAS.length] }); };
+$('salaPistaProx').onclick = () => { const i = PISTAS.indexOf(M.meta.pista || 'praia'); mudarMeta({ pista: PISTAS[(i + 1) % PISTAS.length] }); };
+$('salaBotsMenos').onclick = () => mudarMeta({ bots: Math.max(0, (M.meta.bots ?? 3) - 1) });
+$('salaBotsMais').onclick = () => mudarMeta({ bots: Math.min(5, (M.meta.bots ?? 3) + 1) });
+$('salaAjudaBtn').onclick = () => mudarMeta({ ajuda: M.meta.ajuda === false });
 $('btnComecar').onclick = async () => {
   if (!M.host || !M.code) return;
   $('btnComecar').disabled = true;
   try {
     await rede.limparCorrida(M.code);
-    const c = sortearClima(Math.random);
-    const mus = Math.random() < 0.65 ? (c.hora === 'noite' ? 1 : c.tempo === 'chuva' ? 3 : c.tempo === 'neve' ? 2 : 0) : Math.floor(Math.random() * 4);
-    await rede.atualizarMeta(M.code, { status: 'contagem', rodada: ((M.meta && M.meta.rodada) || 0) + 1, inicio: rede.agora() + 6000, clima: c, musica: mus, semente: Math.random().toString(36).slice(2, 8) });
+    const pista = M.meta.pista || 'praia';
+    carregarPista(pista);
+    const c = climaDaPista(sortearClima(Math.random));
+    const mus = musicaDaPista(c);
+    // carros do computador: nomes, cores (diferentes das dos amigos) e bonecos
+    const usadas = Object.values(M.players).filter(p => p.online).map(p => p.cor);
+    const livres = CORES_CARRO.filter(k => !usadas.includes(k.id));
+    const botsInfo = Array.from({ length: M.meta.bots ?? 3 }, (_, j) => ({ nome: PILOTOS[j].nome, cor: (livres[j] || CORES_CARRO[j]).id, look: npcLooks[j] || null }));
+    await rede.atualizarMeta(M.code, { pista, botsInfo, ajuda: M.meta.ajuda !== false, status: 'contagem', rodada: ((M.meta && M.meta.rodada) || 0) + 1, inicio: rede.agora() + 6000, clima: c, musica: mus, semente: Math.random().toString(36).slice(2, 8) });
   } catch (e) { toast('Não deu pra começar: ' + (e.message || e), 3000); }
   finally { $('btnComecar').disabled = false; }
 };
@@ -980,9 +1107,9 @@ function iniciarOnline(meta) {
   clearInterval(contTimer); musica.parar();
   rand = aleatorio(sementeDe(meta.semente || 'x'));
   zerarCorrida();
-  E.online = true; E.npcs = [];
-  E.posicao = Object.values(M.players).filter(p => p.online).length || 1;
-  M.perigosVistos = new Set(); M.calibrado = false; M.xpDado = false; M.enviadoEm = 0;
+  carregarPista(meta.pista || 'praia');
+  E.online = true; E.npcs = []; E.bots = []; E.ajuda = meta.ajuda !== false;
+  M.perigosVistos = new Set(); M.calibrado = false; M.xpDado = false; M.enviadoEm = 0; M.botsEm = 0;
   perigos.reiniciar();
   perigos.proximo = 1e9;
   perigos.aoCriar = h => {
@@ -995,14 +1122,21 @@ function iniciarOnline(meta) {
   clima.definir(c, CW, CH);
   E.musica = meta.musica || 0;
   montarRemotos();
-  // largada lado a lado: cada um num lugar
+  // largada: os amigos na frente, lado a lado; os carros do computador atrás
   const ids = Object.keys(M.players).sort();
   const k = Math.max(0, ids.indexOf(rede.meuId()));
-  E.x = [-0.5, 0.5, 0, -0.5, 0.5, 0][k % 6];
-  E.pos = Math.max(0, 600 - Math.floor(k / 2) * 320) % COMPR;
+  const lugar = j => ({ x: j % 2 ? 0.5 : -0.5, d: 900 - Math.floor(j / 2) * 360 });
+  E.x = lugar(k).x; E.pos = lugar(k).d;
+  const info = meta.botsInfo || [];
+  if (M.host) {
+    E.npcs = criarNpcs(pref.cor, rand, COMPR, SEG, info.map((b, i) => cabecasNpc[i] || null), info);
+    E.npcs.forEach((n, j) => { const L = lugar(ids.length + j); n.dist = L.d; n.x = n.alvoX = L.x; });
+    E.bots = E.npcs;
+  } else E.bots = info.map((b, j) => ({ uid: null, botId: 'b' + j, nome: b.nome, cor: b.cor, look: b.look, dist: lugar(ids.length + j).d, x: lugar(ids.length + j).x, virar: 0, oculto: true, terminou: null, imgs: null }));
+  for (const b of E.bots) if (!b.imgs || !E.npcs.length) montarImgs(b, b.look);
+  E.posicao = ids.length + E.bots.length;
   mostrar(null);
   $('hud').hidden = false; $('controles').hidden = !TOQUE && E.modo === 'teclado';
-  if (!minimapa) minimapa = new Minimapa($('minimapa'), segs);
   minimapa.ajustar();
   E.fase = 'contagem';
   $('contagem').hidden = false; $('contagem').textContent = '';
@@ -1027,7 +1161,20 @@ function tickOnline() {
   if ((E.fase === 'correndo' || E.fase === 'fim') && t - M.enviadoEm > 120) {
     M.enviadoEm = t;
     rede.enviarEstado(M.code, { d: Math.round(distJog()), x: +E.x.toFixed(3), v: Math.round(E.vel), vi: E.virar, ts: Math.round(rede.agora()) }).catch(() => {});
+    if (M.host && E.npcs.length) {
+      const ts = Math.round(rede.agora()), b = {};
+      E.npcs.forEach((n, j) => { b['b' + j] = { d: Math.round(n.dist), x: +n.x.toFixed(3), v: Math.round(n.vel), vi: n.virar, ts, ...(n.terminou != null ? { fim: +n.terminou.toFixed(2) } : {}) }; });
+      rede.enviarBots(M.code, b).catch(() => {});
+    }
   }
+}
+function montarImgs(r, look) {
+  const chave = r.cor + JSON.stringify(look || null);
+  if (r.chave === chave) return;
+  r.chave = chave;
+  const cor = corPorId(r.cor).c;
+  r.imgs = [-1, 0, 1].map(v => carroImg(cor, v));
+  boneco.cabecas(look).then(cab => { if (cab && r.chave === chave) r.imgs = [-1, 0, 1].map(v => carroImg(cor, v, null, null, cab)); });
 }
 function montarRemotos() {
   const eu = rede.meuId();
@@ -1037,19 +1184,25 @@ function montarRemotos() {
     let r = E.remotos.find(x => x.uid === id);
     if (!r) r = { uid: id, dist: 0, x: 0, virar: 0, imgs: null, oculto: true, terminou: null };
     r.nome = p.name; r.cor = p.cor || 'azul'; r.online = p.online; r.look = p.look;
-    const chave = r.cor + JSON.stringify(p.look || null);
-    if (r.chave !== chave) {
-      r.chave = chave;
-      const cor = corPorId(r.cor).c;
-      r.imgs = [-1, 0, 1].map(v => carroImg(cor, v));
-      boneco.cabecas(p.look).then(cab => { if (cab && r.chave === chave) r.imgs = [-1, 0, 1].map(v => carroImg(cor, v, null, null, cab)); });
-    }
+    montarImgs(r, p.look);
     lista.push(r);
   }
   E.remotos = lista;
 }
 function atualizarRemotos(dt) {
   const est = M.corrida.estado || {}, res = M.corrida.resultado || {};
+  if (!M.host) {
+    const bs = M.corrida.bots || {};
+    for (const r of E.bots) {
+      const e = bs[r.botId];
+      if (!e) { r.oculto = true; continue; }
+      r.terminou = e.fim != null ? e.fim : null;
+      const idade = Math.max(0, Math.min(0.5, (rede.agora() - e.ts) / 1000));
+      const alvo = e.d + e.v * idade;
+      if (r.oculto || Math.abs(alvo - r.dist) > 4000) r.dist = alvo; else r.dist += (alvo - r.dist) * Math.min(1, dt * 8);
+      r.x += (e.x - r.x) * Math.min(1, dt * 10); r.virar = e.vi || 0; r.oculto = false;
+    }
+  }
   for (const r of E.remotos) {
     const e = est[r.uid];
     r.terminou = res[r.uid] ? res[r.uid].tempo : null;
@@ -1074,7 +1227,7 @@ function receberPerigos() {
 }
 function terminarOnline() {
   const melhor = Math.min(...E.voltas);
-  const lugar = Object.keys(M.corrida.resultado || {}).length + 1;
+  const lugar = Object.keys(M.corrida.resultado || {}).length + 1 + E.bots.filter(b => b.terminou != null && b.terminou < E.tempo).length;
   rede.enviarResultado(M.code, { tempo: +E.tempo.toFixed(2), melhor: +melhor.toFixed(2), nome: PERFIL.tag }).catch(() => {});
   if (!M.xpDado) {
     M.xpDado = true;
@@ -1089,17 +1242,20 @@ function desenharFimOnline(eu1) {
   const res = { ...(M.corrida.resultado || {}) };
   const eu = rede.meuId();
   if (eu1 && !res[eu]) res[eu] = { tempo: E.tempo, melhor: Math.min(...E.voltas), nome: PERFIL.tag };
+  // carros do computador entram na classificação como "jogadores" de mentira
+  const pl = { ...M.players };
+  E.bots.forEach((b, j) => { const id = 'bot' + j; pl[id] = { name: b.nome + ' 🤖', cor: b.cor, look: b.look, online: true }; if (b.terminou != null) res[id] = { tempo: b.terminou, melhor: 999, nome: b.nome }; });
   const chegaram = Object.entries(res).sort((a, b) => a[1].tempo - b[1].tempo);
   const est = M.corrida.estado || {};
-  const faltam = Object.entries(M.players).filter(([id]) => !res[id] && est[id]);
+  const faltam = Object.entries(pl).filter(([id]) => !res[id] && (est[id] || id.startsWith('bot')));
   const med = ['🥇', '🥈', '🥉'];
   const minha = chegaram.findIndex(([id]) => id === eu) + 1;
-  const quem = (id, r) => (M.players[id] || {}).name || (r && r.nome) || '?';
+  const quem = (id, r) => (pl[id] || {}).name || (r && r.nome) || '?';
   $('fimTitulo').textContent = minha === 1 ? '🏆 Você venceu!' : minha ? `🏁 Você chegou em ${minha}º` : '🏁 Fim!';
-  podio(chegaram.slice(0, 3).map(([id, r]) => ({ nome: quem(id, r), look: (M.players[id] || {}).look })));
-  $('fimLista').innerHTML = chegaram.map(([id, r], i) => `<li class="${id === eu ? 'eu' : ''}"><span>${med[i] || (i + 1) + 'º'}</span><i style="background:${corPorId((M.players[id] || {}).cor).c[0]}"></i><b>${esc(quem(id, r))}</b><em>${fmt(r.tempo)}</em></li>`).join('')
+  podio(chegaram.slice(0, 3).map(([id, r]) => ({ nome: quem(id, r), look: (pl[id] || {}).look })));
+  $('fimLista').innerHTML = chegaram.map(([id, r], i) => `<li class="${id === eu ? 'eu' : ''}"><span>${med[i] || (i + 1) + 'º'}</span><i style="background:${corPorId((pl[id] || {}).cor).c[0]}"></i><b>${esc(quem(id, r))}</b><em>${fmt(r.tempo)}</em></li>`).join('')
     + faltam.map(([id, p]) => `<li><span>…</span><i style="background:${corPorId(p.cor).c[0]}"></i><b>${esc(p.name || '?')}</b><em>${p.online ? 'correndo…' : 'saiu'}</em></li>`).join('');
-  const rapida = chegaram.reduce((a, [id, r]) => (!a || r.melhor < a.r.melhor ? { id, r } : a), null);
+  const rapida = chegaram.filter(([id]) => !id.startsWith('bot')).reduce((a, [id, r]) => (!a || r.melhor < a.r.melhor ? { id, r } : a), null);
   $('fimMelhor').textContent = rapida ? `${fmt(rapida.r.melhor)} (${quem(rapida.id, rapida.r)})` : '–';
   $('fimVoltas').textContent = 'Suas voltas: ' + E.voltas.map((v, i) => `${i + 1}ª ${fmt(v)}`).join(' · ');
 }
@@ -1170,7 +1326,8 @@ function quadro(agora) {
   requestAnimationFrame(quadro);
 }
 
-window.__pnt = { E, volante, segs, COMPR, V_MAX, novaCorrida, irCalibrar, perigos, clima, pref, M, PERFIL: () => PERFIL };
+window.__pnt = { E, volante, V_MAX, novaCorrida, irCalibrar, clima, pref, M, PERFIL: () => PERFIL, carregarPista,
+  get segs() { return segs; }, get COMPR() { return COMPR; }, get perigos() { return perigos; }, get N() { return N; } };
 
 prepararInicio();
 carregarPerfil();

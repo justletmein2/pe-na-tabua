@@ -174,3 +174,10 @@ label.linha input { width: 22px; height: 22px; accent-color: #ffd23f; }
 .menu .entrarSala input { font-size: 17px; padding: 6px; }
 .menu .botoes .sec { margin-top: 8px; }
 .menu #escolhaCor { margin: 4px 0; }
+
+#hudExtra { font-size: 13px; font-weight: 900; color: #ffd23f; text-shadow: 2px 2px 0 #000; margin-top: 2px; }
+.seletor, .opcao { display: flex; align-items: center; gap: 6px; margin: 6px 0; }
+.seletor b, .opcao b { flex: 1; text-align: center; font-size: 15px; }
+.seletor .sec, .opcao .sec { width: auto; margin: 0; padding: 6px 12px; }
+.opcao span { width: 44%; font-size: 13px; opacity: .85; text-align: left; }
+#salaOpcoes { background: rgba(0,0,0,.2); border-radius: 12px; padding: 4px 10px; margin: 6px 0; }

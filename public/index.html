@@ -27,7 +27,7 @@
     </div>
     <canvas id="minimapa"></canvas>
     <div id="hudDir"><b id="hudVel">0</b><span class="rot">km/h</span>
-      <div id="hudPosBox"><b id="hudPos">6º</b><span id="hudPosTotal">/6</span></div></div>
+      <div id="hudPosBox"><b id="hudPos">6º</b><span id="hudPosTotal">/6</span></div><div id="hudExtra"></div></div>
     <div id="perigo" hidden><div class="pisca">⚠️ <span id="perigoIcone"></span> <b id="perigoNome"></b> ⚠️</div><small id="perigoDica"></small></div>
     <div id="balao" hidden></div>
     <div id="contagem" hidden></div>
@@ -45,6 +45,7 @@
       <div class="colunas">
         <div class="col">
           <div id="piloto"></div>
+          <div class="seletor"><button id="pistaAnt" class="sec">◀</button><b id="pistaNome"></b><button id="pistaProx" class="sec">▶</button></div>
           <div id="escolhaCor"><canvas id="previaCarro" width="56" height="36"></canvas><div id="cores"></div></div>
           <p id="txtInicio" class="peq" hidden></p>
           <p id="dicaTeclado" class="peq" hidden>← → viram · ↑ (ou Z) acelera · Espaço (ou X) turbo</p>
@@ -106,6 +107,7 @@
         <small>Maior = curvas leves mais fáceis, viradas fortes iguais</small></label>
       <label class="linha"><input type="checkbox" id="cfgInverter"> Inverter direção</label>
       <label class="linha"><input type="checkbox" id="cfgNivelar"> Cenário nivelado (gira ao contrário do celular)</label>
+      <label class="linha"><input type="checkbox" id="cfgAjuda"> Ajuda pra quem está atrás (no treino)</label>
       <label class="linha"><input type="checkbox" id="cfgBolinhas"> Bolinhas anti-enjoo (nas bordas da tela)</label>
       <label class="linha"><input type="checkbox" id="cfgSom"> Ronco do motor e efeitos</label>
       <label class="linha"><input type="checkbox" id="cfgMusica"> Música</label>
@@ -153,6 +155,11 @@
       <div id="salaCodigo" class="codigo"></div>
       <button id="btnConvidar" class="grande">📲 Convidar amigos</button>
       <ul id="salaJogadores"></ul>
+      <div id="salaOpcoes">
+        <div class="opcao"><span>Pista</span><button id="salaPistaAnt" class="sec soAnfitriao">◀</button><b id="salaPista"></b><button id="salaPistaProx" class="sec soAnfitriao">▶</button></div>
+        <div class="opcao"><span>Computador junto</span><button id="salaBotsMenos" class="sec soAnfitriao">−</button><b id="salaBots"></b><button id="salaBotsMais" class="sec soAnfitriao">+</button></div>
+        <div class="opcao"><span>Ajuda pra quem está atrás</span><b id="salaAjuda"></b><button id="salaAjudaBtn" class="sec soAnfitriao">trocar</button></div>
+      </div>
       <p id="salaEspera" class="peq"></p>
       <button id="btnComecar" class="grande" hidden>🏁 Começar corrida</button>
       <div class="botoes"><button id="btnPilotoSala" class="sec">Meu piloto</button><button id="btnCorSala" class="sec">Trocar cor</button><button id="btnSairSala" class="sec">Sair da sala</button></div>

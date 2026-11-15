@@ -12,17 +12,24 @@ const LISTA = Object.keys(TIPOS);
 const AVISO = 1.5;  // segundos de aviso antes do perigo valer
 
 export class Perigos {
-  constructor(segs, extras) {
+  constructor(segs, extras, tema) {
     this.segs = segs; this.N = segs.length; this.ex = extras;
     this.lista = []; this.proximo = 8; this.marcados = [];
+    this.tipos = (tema && tema.perigos) || LISTA;
+    this.skins = (tema && tema.skins) || {};
+    const laser = this.skins.fogo && this.skins.fogo.chama === 'laser';
+    this.voador = this.skins.fogo && this.skins.fogo.voador === 'drone' ? tema.drone : extras.dragao;
+    this.chamas = laser ? extras.chama.map(c => tingir(c, '#ff2a6a')) : extras.chama;
   }
+  // nome, ícone e frases do perigo (cada tema pode trocar o nome)
+  info(tipo) { return { ...TIPOS[tipo], ...(this.skins[tipo] || {}) }; }
   reiniciar() { this.lista = []; this.proximo = 8; this.limparMarcas(); }
   dentro(h, i) { return ((i - h.s0) % this.N + this.N) % this.N < h.n; }
   ativo(h, t) { return t >= h.tAtivo; }
 
   // s0Fixo: usado quando o perigo veio do anfitrião (multiplayer)
   criar(t, segJog, rand, tipo, lado, s0Fixo) {
-    tipo = tipo || LISTA[Math.floor(rand() * LISTA.length)];
+    tipo = tipo || this.tipos[Math.floor(rand() * this.tipos.length)];
     lado = lado || (rand() < 0.5 ? -1 : 1);
     const n = TIPOS[tipo].comp;
     const s0 = s0Fixo != null ? s0Fixo : (segJog + 170 + Math.floor(rand() * 40)) % this.N;
@@ -73,7 +80,7 @@ export class Perigos {
     for (const h of this.lista) {
       const at = this.ativo(h, t), N = this.N;
       if (h.tipo === 'lava') for (const b of h.bolas) if (t < b.tp) out.push({ i: (h.s0 + b.k) % N, x: b.x, img: this.ex.bolaFogo, mundo: 0.28, alt: (b.tp - t) * 5000, luz: 'rgba(255,140,40,A)' });
-      if (h.tipo === 'fogo' && at) for (const c of h.chamas) out.push({ i: (h.s0 + c.k) % N, x: c.x, img: this.ex.chama[(c.f + Math.floor(t * 10)) % 2], mundo: 0.4, alt: 0, luz: 'rgba(255,140,40,A)' });
+      if (h.tipo === 'fogo' && at) for (const c of h.chamas) out.push({ i: (h.s0 + c.k) % N, x: c.x, img: this.chamas[(c.f + Math.floor(t * 10)) % 2], mundo: 0.4, alt: 0, luz: 'rgba(255,140,40,A)' });
       if (h.tipo === 'caminhao') {
         if (at) out.push({ i: (h.s0 + 8) % N, x: h.lado * 0.55, img: this.ex.caminhao, mundo: 1.25, alt: 0 });
         for (let k = 0; k < h.n; k += 4) out.push({ i: (h.s0 + k) % N, x: h.lado * 0.08, img: this.ex.cone, mundo: 0.14, alt: 0 });
@@ -126,7 +133,7 @@ export class Perigos {
         const voo = Math.min(1, (t - h.t0) / AVISO);
         const x = W / 2 - h.lado * W * 0.6 + h.lado * W * (0.6 + 0.25) * voo;
         const y = H * 0.16 + Math.sin(t * 4) * 6;
-        const d = this.ex.dragao[Math.floor(t * 6) % 2];
+        const d = this.voador[Math.floor(t * 6) % 2];
         g.save();
         if (h.lado < 0) { g.translate(Math.round(x), 0); g.scale(-1, 1); g.drawImage(d, -d.width, Math.round(y)); }
         else g.drawImage(d, Math.round(x - d.width), Math.round(y));
@@ -142,4 +149,11 @@ export class Perigos {
       }
     }
   }
+}
+
+function tingir(img, cor) {
+  const c = document.createElement('canvas'); c.width = img.width; c.height = img.height;
+  const g = c.getContext('2d'); g.drawImage(img, 0, 0);
+  g.globalCompositeOperation = 'source-atop'; g.globalAlpha = 0.65; g.fillStyle = cor; g.fillRect(0, 0, c.width, c.height);
+  return c;
 }

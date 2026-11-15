@@ -1,7 +1,7 @@
 // Desenhos em pixel art feitos por código (nada de imagens copiadas de outros jogos).
 // Cada objeto da beira da pista vira um canvas pequeno, que o jogo amplia sem suavizar.
 
-function novo(w, h) {
+export function novo(w, h) {
   const c = document.createElement('canvas');
   c.width = w; c.height = h;
   const g = c.getContext('2d');
@@ -9,12 +9,12 @@ function novo(w, h) {
 }
 
 // semente fixa: os desenhos saem sempre iguais
-function aleatorio(semente) {
+export function aleatorio(semente) {
   let s = semente >>> 0;
   return () => { s += 0x6D2B79F5; let t = s; t = Math.imul(t ^ t >>> 15, t | 1); t ^= t + Math.imul(t ^ t >>> 7, t | 61); return ((t ^ t >>> 14) >>> 0) / 4294967296; };
 }
 
-function coqueiro(semente) {
+export function coqueiro(semente) {
   const W = 40, H = 64;
   const [c, p] = novo(W, H);
   const r = aleatorio(semente);
@@ -50,7 +50,7 @@ function coqueiro(semente) {
   return c;
 }
 
-function guardaSol(cor1) {
+export function guardaSol(cor1) {
   const W = 34, H = 30;
   const [c, p] = novo(W, H);
   p('#eeeeee', 16, 8, 2, 22);
@@ -67,7 +67,7 @@ function guardaSol(cor1) {
   return c;
 }
 
-function placaSeta(dir) {
+export function placaSeta(dir) {
   const W = 26, H = 28;
   const [c, p] = novo(W, H);
   p('#7a7f87', 5, 14, 2, 14); p('#7a7f87', 19, 14, 2, 14);
@@ -82,7 +82,7 @@ function placaSeta(dir) {
   return c;
 }
 
-function quiosque() {
+export function quiosque() {
   const W = 52, H = 40;
   const [c, p] = novo(W, H);
   // telhado de palha
@@ -100,7 +100,7 @@ function quiosque() {
   return c;
 }
 
-function pedra() {
+export function pedra() {
   const [c, p] = novo(22, 12);
   p('#8b8f99', 3, 3, 16, 9); p('#8b8f99', 6, 1, 10, 2); p('#a9adb6', 6, 2, 8, 3); p('#5f636b', 3, 10, 16, 2);
   return c;
@@ -269,7 +269,7 @@ export function carroImg(cor, virar, pele, cabelo, cabeca) {
 }
 
 // ---------- objetos dos perigos e da beira ----------
-function poste(lado) {
+export function poste(lado) {
   // lado = de que lado da pista ele fica; o braço aponta pra pista
   const [c, p] = novo(16, 60);
   const bx = lado < 0 ? 3 : 11;
@@ -281,7 +281,7 @@ function poste(lado) {
   c.luz = { x: (lx + 2.5) / 16, y: 7.5 / 60 };
   return c;
 }
-function cone() {
+export function cone() {
   const [c, p] = novo(10, 12);
   for (let y = 0; y < 10; y++) { const m = Math.ceil(1 + y * 0.4); p(y > 3 && y < 6 ? '#ffffff' : '#ff7a1a', 5 - m, y, m * 2, 1); }
   p('#222', 0, 10, 10, 2);
@@ -304,7 +304,7 @@ function bolaFogo() {
   p('#ff7a1a', 2, 2, 8, 8); p('#ffd23f', 4, 3, 4, 5); p('#ffffff', 5, 4, 2, 2);
   return c;
 }
-function chama(f) {
+export function chama(f) {
   const [c, p] = novo(14, 22);
   const alt = f ? 22 : 19;
   for (let y = 0; y < alt; y++) {
@@ -327,7 +327,7 @@ function onda() {
   for (let i = 0; i < 12; i++) p('#ffffff', 4 + i * 5, 40 + (i % 3), 3, 1);
   return c;
 }
-function dragao(asa) {
+export function dragao(asa) {
   const [c, p] = novo(52, 30);
   // corpo
   p('#2fa84f', 12, 14, 26, 9); p('#1d7a37', 12, 21, 26, 2); p('#ffb347', 16, 19, 18, 3);
@@ -344,7 +344,7 @@ function dragao(asa) {
   p('#1d7a37', 18, 23, 3, 3); p('#1d7a37', 30, 23, 3, 3);
   return c;
 }
-function vulcao() {
+export function vulcao() {
   const [c, p] = novo(110, 56);
   for (let y = 0; y < 56; y++) {
     const m = Math.round(12 + y * 0.9);

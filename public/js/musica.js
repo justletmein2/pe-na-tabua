@@ -87,6 +87,41 @@ export const MUSICAS = [
     },
     ordem: ['intro', 'A', 'A', 'B', 'B'],
   },
+  {
+    nome: 'Sakura Turbo', bpm: 158, baixo: 'galope',
+    bateria: { k: 'x...x...x...x...', s: '....x.......x..x', h: 'x.x.x.x.x.x.x.x.' },
+    secoes: {
+      A: { acordes: ['Am', 'F', 'Dm', 'E'], lead: [
+        'E5:2 A5:2 Bb5:2 A5:2 E5:2 D5:2 E5:4', 'F5:2 A5:2 Bb5:4 A5:2 F5:2 E5:4',
+        'D5:2 F5:2 A5:2 D6:2 Bb5:2 A5:2 F5:4', 'E5:4 F5:2 E5:2 D5:2 E5:6'] },
+      B: { acordes: ['Dm', 'Bb', 'Am', 'E'], arpejo: true, lead: [
+        'D6:4 E6:2 F6:2 E6:4 D6:4', 'Bb5:4 A5:2 F5:2 D5:8', 'A5:2 Bb5:2 A5:2 E5:2 F5:2 E5:2 D5:4', 'E5:8 r:4 E6:4'] },
+    },
+    ordem: ['intro', 'A', 'A', 'B', 'A'],
+  },
+  {
+    nome: 'Revolta das Máquinas', bpm: 168, baixo: 'oitavas',
+    bateria: { k: 'x.x...x.x.x...x.', s: '....x.......x...', h: 'xxxxxxxxxxxxxxxx' },
+    secoes: {
+      A: { acordes: ['Dm', 'Dm', 'Bb', 'C'], lead: [
+        'D5:1 D5:1 r:2 D5:1 D5:1 r:2 F5:2 E5:2 D5:4', 'A5:2 G5:2 F5:2 E5:2 F5:2 E5:2 D5:4',
+        'D6:4 C6:2 Bb5:2 A5:4 F5:4', 'G5:2 A5:2 C6:4 E6:4 G6:4'] },
+      B: { acordes: ['Gm', 'Bb', 'A', 'A'], arpejo: true, lead: [
+        'G6:4 F6:2 D6:2 Bb5:4 G5:4', 'F6:2 D6:2 Bb5:2 F5:2 Bb5:4 D6:4', 'E6:2 C#6:2 A5:2 E5:2 C#6:4 E6:4', 'A6:8 G6:4 E6:4'] },
+    },
+    ordem: ['intro', 'A', 'A', 'B', 'B'],
+  },
+  {
+    nome: 'Tambores do Festival', bpm: 132, baixo: 'swing',
+    bateria: { k: 'x..x..x.x..x.x..', s: '....x..x....x.x.', h: 'x.x.x.x.x.x.x.x.' },
+    secoes: {
+      A: { acordes: ['G', 'Em', 'C', 'D'], lead: [
+        'D5:2 E5:2 G5:4 A5:2 G5:2 E5:4', 'B4:2 D5:2 E5:4 G5:4 E5:4', 'E5:2 G5:2 A5:4 B5:2 A5:2 G5:4', 'A5:4 G5:2 E5:2 D5:8'] },
+      B: { acordes: ['C', 'D', 'Bm', 'Em'], arpejo: true, lead: [
+        'G5:4 A5:4 B5:4 D6:4', 'E6:4 D6:2 B5:2 A5:8', 'B5:2 A5:2 G5:2 E5:2 D5:4 E5:4', 'E5:12 r:4'] },
+    },
+    ordem: ['intro', 'A', 'A', 'B', 'A'],
+  },
 ];
 
 // transforma a música numa lista de compassos

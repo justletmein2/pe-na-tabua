@@ -113,7 +113,7 @@ export async function criarSala() {
     let code = '';
     for (let i = 0; i < 4; i++) code += CHARS[Math.floor(Math.random() * CHARS.length)];
     if (await B.get(SALAS + code + '/meta')) continue;
-    await B.set(SALAS + code + '/meta', { host: uid, status: 'lobby', rodada: 0, pista: 'praia', criada: agora() });
+    await B.set(SALAS + code + '/meta', { host: uid, status: 'lobby', rodada: 0, pista: 'praia', bots: 3, ajuda: true, criada: agora() });
     return code;
   }
   throw new Error('Não consegui criar a sala, tente de novo');
@@ -134,13 +134,15 @@ export async function entrarSala(code, publico, cb) {
 export const atualizarMeta = (code, d) => B.update(SALAS + code + '/meta', d);
 export const atualizarEu = (code, d) => B.update(`${SALAS}${code}/players/${uid}`, d);
 export async function limparCorrida(code) {
-  await Promise.all(['estado', 'resultado', 'perigos'].map(k => B.remove(SALAS + code + '/' + k)));
+  await Promise.all(['estado', 'resultado', 'perigos', 'bots'].map(k => B.remove(SALAS + code + '/' + k)));
 }
 export const enviarEstado = (code, e) => B.set(`${SALAS}${code}/estado/${uid}`, e);
 export const enviarResultado = (code, r) => B.set(`${SALAS}${code}/resultado/${uid}`, r);
+// carros do computador (só o anfitrião escreve)
+export const enviarBots = (code, b) => B.set(`${SALAS}${code}/bots`, b);
 export const publicarPerigo = (code, id, h) => B.set(`${SALAS}${code}/perigos/${id}`, h);
 export function ouvirCorrida(code, cb) {
-  const st = { estado: {}, resultado: {}, perigos: {} };
-  const offs = ['estado', 'resultado', 'perigos'].map(k => B.on(SALAS + code + '/' + k, v => { st[k] = v || {}; cb(st, k); }));
+  const st = { estado: {}, resultado: {}, perigos: {}, bots: {} };
+  const offs = ['estado', 'resultado', 'perigos', 'bots'].map(k => B.on(SALAS + code + '/' + k, v => { st[k] = v || {}; cb(st, k); }));
   return () => offs.forEach(f => f && f());
 }
