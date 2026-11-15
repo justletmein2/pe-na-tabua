@@ -11,14 +11,15 @@ const PILOTOS = [
 ];
 const FAIXAS = [-0.6, 0, 0.6];
 
-export function criarNpcs(corJogador, rand, COMPR, SEG) {
+export function criarNpcs(corJogador, rand, COMPR, SEG, cabecasNpc = []) {
   const cores = CORES_CARRO.filter(c => c.id !== corJogador).sort(() => rand() - 0.5);
-  return PILOTOS.map((p, k) => {
+  return PILOTOS.map((p0, k) => {
+    const p = { ...p0, cabeca: cabecasNpc[k] || null };
     const cor = cores[k % cores.length].c;
     const fila = Math.floor(k / 2), col = k % 2;
     return {
       ...p, cor: cores[k % cores.length].id,
-      imgs: [-1, 0, 1].map(v => carroImg(cor, v, p.pele, p.cabelo)),
+      imgs: [-1, 0, 1].map(v => carroImg(cor, v, p.pele, p.cabelo, p.cabeca)),
       // largada: em filas de 2 na frente do jogador
       dist: (5 - fila * 2 - col) * SEG * 1.6 + (k === 4 ? 0 : 0),
       x: col ? 0.5 : -0.5, alvoX: col ? 0.5 : -0.5,

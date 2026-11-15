@@ -178,7 +178,7 @@ export function criarFundo(alturaHorizonte) {
 
 // ---------- o carro (visto de trás, conversível) ----------
 // Desenha direto no canvas do jogo em blocos de "s" pixels. Medidas em pixels de sprite (56x36).
-export const CARRO_W = 56, CARRO_H = 36;
+export const CARRO_W = 56, CARRO_H = 36, TOPO = 8;   // TOPO: espaço acima do carro pra cabeça do piloto
 export function desenharCarro(g, ox, oy, s, o) {
   const p = (cor, x, y, w = 1, h = 1) => { g.fillStyle = cor; g.fillRect(ox + Math.round(x * s), oy + Math.round(y * s), Math.round(w * s), Math.round(h * s)); };
   const cor = o.cor || ['#e8382f', '#a8221d', '#ff8a7a'];
@@ -221,7 +221,14 @@ export function desenharCarro(g, ox, oy, s, o) {
   // depois vira o boneco do Forma Palavras (de costas, ou de frente quando reclama)
   const hx = 13 + vt + (o.rosto ? 0 : v), hy = 0;
   const pele = o.pele || '#f0c39b', cabelo = o.cabelo || '#4a2c17';
-  if (!o.rosto) {
+  if (o.cabeca) {
+    // boneco do Forma Palavras (de costas; de frente quando vira pra reclamar)
+    const img = o.rosto ? o.cabeca.frente : o.cabeca.costas;
+    const sm = g.imageSmoothingEnabled; g.imageSmoothingEnabled = false;
+    g.drawImage(img, ox + Math.round((hx - 4) * s), oy + Math.round((hy - TOPO) * s), 16 * s, 18 * s);
+    g.imageSmoothingEnabled = sm;
+    p('#4a2f22', 7 + vt, 9, 4, 3); p('#4a2f22', 24 + vt, 9, 3, 3);   // bordas do banco na frente dos ombros
+  } else if (!o.rosto) {
     p(pele, hx - 1, hy + 4, 2, 2); p(pele, hx + 10, hy + 4, 2, 2);          // orelhas
     p(cabelo, hx + 1, hy, 8, 1); p(cabelo, hx, hy + 1, 10, 7); p(cabelo, hx + 1, hy + 8, 8, 1);
     p('rgba(255,255,255,.18)', hx + 2, hy + 1, 4, 1);
@@ -233,7 +240,7 @@ export function desenharCarro(g, ox, oy, s, o) {
     p('#7a1a1a', hx + 3, hy + 7, 4, 2); p('#ffffff', hx + 3, hy + 7, 4, 1);    // boca aberta
   }
   return {
-    x: ox + (hx + 5) * s, y: oy + hy * s,
+    x: ox + (hx + 5) * s, y: oy + (o.cabeca ? hy - TOPO : hy) * s,
     luzes: [[ox + 9 * s, oy + 17.5 * s], [ox + 47 * s, oy + 17.5 * s]],
   };
 }
@@ -254,9 +261,10 @@ export const CORES_CARRO = [
 export const corPorId = id => (CORES_CARRO.find(k => k.id === id) || CORES_CARRO[0]);
 
 // carro pronto num canvas (pros adversários)
-export function carroImg(cor, virar, pele, cabelo) {
-  const [c, , g] = novo(CARRO_W, CARRO_H);
-  desenharCarro(g, 0, 0, 1, { cor, virar, roda: 0, pele, cabelo });
+export function carroImg(cor, virar, pele, cabelo, cabeca) {
+  // canvas um pouco mais alto que o carro, pra caber a cabeça do piloto
+  const [c, , g] = novo(CARRO_W * 2, (CARRO_H + TOPO) * 2);
+  desenharCarro(g, 0, TOPO * 2, 2, { cor, virar, roda: 0, pele, cabelo, cabeca });
   return c;
 }
 

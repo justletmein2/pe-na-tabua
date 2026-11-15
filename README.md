@@ -4,7 +4,8 @@ Corrida multiplayer pelo celular, estilo jogos de corrida do Super Nintendo: vis
 carro, estrada com curvas e morros, pixel art. O celular deitado vira o volante (inclinação),
 e na tela só tem ACELERAR e TURBO.
 
-**Fase atual:** uma pista de praia, corrida de 3 voltas contra 5 adversários do computador,
+**Fase atual:** uma pista de praia; corrida de 3 voltas com amigos (salas com código de 4 letras)
+ou contra 5 adversários do computador; piloto = boneco do Forma Palavras;
 perigos malucos com aviso (lava de vulcão, fogo de dragão, caminhão tombado, onda gigante),
 clima sorteado (dia, fim de tarde, noite; chuva ou neve), 4 músicas e cor do carro à escolha.
 

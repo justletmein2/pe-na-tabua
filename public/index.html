@@ -40,14 +40,24 @@
 
   <!-- telas -->
   <section id="telaInicio" class="tela">
-    <div class="caixa">
+    <div class="caixa menu">
       <h1>PÉ NA TÁBUA</h1>
-      <p class="sub">Pista da praia · contra o computador</p>
-      <div id="escolhaCor"><canvas id="previaCarro" width="56" height="36"></canvas><div id="cores"></div></div>
-      <p id="txtInicio">Segure o celular deitado, como um volante. Para virar, gire o celular.</p>
-      <button id="btnLigar" class="grande">Ligar volante</button>
-      <button id="btnTeclado" class="grande" hidden>Jogar com teclado</button>
-      <p id="dicaTeclado" class="peq" hidden>← → viram · ↑ (ou Z) acelera · Espaço (ou X) turbo</p>
+      <div class="colunas">
+        <div class="col">
+          <div id="piloto"></div>
+          <div id="escolhaCor"><canvas id="previaCarro" width="56" height="36"></canvas><div id="cores"></div></div>
+          <p id="txtInicio" class="peq" hidden></p>
+          <p id="dicaTeclado" class="peq" hidden>← → viram · ↑ (ou Z) acelera · Espaço (ou X) turbo</p>
+        </div>
+        <div class="col">
+          <button id="btnEntrarConvite" class="grande" hidden>Entrar na sala</button>
+          <button id="btnCriarSala" class="grande">🏁 Criar sala e chamar amigos</button>
+          <div class="entrarSala"><input id="codigoSala" placeholder="CÓDIGO" maxlength="4" autocomplete="off" autocapitalize="characters"><button id="btnEntrarSala" class="sec">Entrar</button></div>
+          <button id="btnSolo" class="grande">🤖 Treinar contra o computador</button>
+          <div class="botoes"><button id="btnComoJogar" class="sec">❓ Como jogar</button><button id="btnAjustesMenu" class="sec">⚙️ Ajustes</button></div>
+          <p class="peq"><a href="../" class="link">← outros jogos</a></p>
+        </div>
+      </div>
     </div>
   </section>
 
@@ -111,14 +121,56 @@
     </div>
   </section>
 
+  <section id="telaComo" class="tela" hidden>
+    <div class="caixa larga">
+      <h2>Como jogar</h2>
+      <p>📱 <b>Volante:</b> segure o celular deitado, como um volante, e gire pra virar. No computador: setas ← →.</p>
+      <p>🟢 <b>ACELERAR</b> (polegar direito): segure pra andar. Não tem freio: soltar faz o carro perder velocidade, e é assim que se faz as curvas fortes.</p>
+      <p>🔥 <b>TURBO</b> (polegar esquerdo): a barra enche enquanto você fica na pista sem bater. Toque e usa tudo de uma vez.</p>
+      <p>🏖️ Sair da pista deixa o carro lento. Bater em coqueiro, poste ou placa faz rodar. Encostar em outro carro faz os dois perderem um pouco.</p>
+      <p>⚠️ <b>Perigos:</b> quando aparecer o aviso, aquele lado da pista vai virar lava, fogo de dragão, caminhão tombado ou onda gigante. Vá pro outro lado! Se cair, você fica 2 segundos piscando e não leva outro golpe.</p>
+      <p>🏁 <b>Com amigos:</b> toque em <b>Criar sala</b> e depois em <b>Convidar amigos</b> pra mandar o link (ou passe o código de 4 letras). Quem criou a sala começa a corrida. São 3 voltas.</p>
+      <p>👤 <b>Seu piloto</b> é o mesmo boneco do <b>Forma Palavras</b>, e as corridas dão XP pro mesmo nível de lá.</p>
+      <p>🌀 Se ficar enjoado com o cenário girando, desligue em ⚙️ <b>Ajustes</b> › Cenário nivelado, ou ligue as bolinhas anti-enjoo.</p>
+      <button id="btnFecharComo" class="grande">Entendi!</button>
+    </div>
+  </section>
+
+  <section id="telaPerfil" class="tela" hidden>
+    <div class="caixa larga">
+      <h2>Seu piloto</h2>
+      <div class="editorTopo"><div id="previaBoneco"></div>
+        <label>Nome (o mesmo do Forma Palavras)<input id="nomePiloto" maxlength="14" autocomplete="off" placeholder="Seu nome"></label></div>
+      <p id="dicaLogin" class="peq">Já tem boneco no <b>Forma Palavras</b> em outro aparelho? <a class="link" href="../forma-palavras/">Entre na sua conta lá</a> e volte aqui: o boneco vem junto.</p>
+      <div id="partesBoneco"></div>
+      <div class="botoes"><button id="btnCancelarPiloto" class="sec">Cancelar</button><button id="btnSalvarPiloto" class="grande">Salvar</button></div>
+    </div>
+  </section>
+
+  <section id="telaSala" class="tela" hidden>
+    <div class="caixa">
+      <p class="sub">Código da sala</p>
+      <div id="salaCodigo" class="codigo"></div>
+      <button id="btnConvidar" class="grande">📲 Convidar amigos</button>
+      <ul id="salaJogadores"></ul>
+      <p id="salaEspera" class="peq"></p>
+      <button id="btnComecar" class="grande" hidden>🏁 Começar corrida</button>
+      <div class="botoes"><button id="btnPilotoSala" class="sec">Meu piloto</button><button id="btnCorSala" class="sec">Trocar cor</button><button id="btnSairSala" class="sec">Sair da sala</button></div>
+    </div>
+  </section>
+
   <section id="telaFim" class="tela" hidden>
     <div class="caixa">
       <h2 id="fimTitulo">🏁 Fim!</h2>
+      <div id="podio"></div>
       <ol id="fimLista"></ol>
-      <p>Sua volta mais rápida: <b id="fimMelhor"></b></p>
+      <p>Volta mais rápida: <b id="fimMelhor"></b></p>
       <p id="fimVoltas" class="peq"></p>
       <button id="btnDeNovo" class="grande">Correr de novo</button>
-      <div class="botoes"><button id="btnFimAjustes" class="sec">Ajustar volante</button><button id="btnFimInicio" class="sec">Trocar cor</button></div>
+      <div class="botoes"><button id="btnFimAjustes" class="sec">Ajustar volante</button><button id="btnFimInicio" class="sec">Menu</button></div>
+      <p id="fimEspera" class="peq" hidden>Esperando o anfitrião começar a próxima…</p>
+      <button id="btnNovaRodada" class="grande" hidden>Voltar pra sala (todos)</button>
+      <button id="btnSairSala2" class="sec" hidden>Sair da sala</button>
     </div>
   </section>
 

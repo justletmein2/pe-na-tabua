@@ -1,6 +1,6 @@
 // Pé na Tábua — corrida contra o computador: uma pista, 3 voltas, perigos malucos, clima.
 import { SEG, LARG, CORES_PRAIA, criarPistaPraia } from './pista.js';
-import { criarSprites, criarFundo, criarExtras, desenharCarro, CARRO_W, CARRO_H, CORES_CARRO, corPorId } from './sprites.js';
+import { criarSprites, criarFundo, criarExtras, desenharCarro, carroImg, CARRO_W, CARRO_H, CORES_CARRO, corPorId } from './sprites.js';
 import { volante, ligar, calibrar, atualizar as atualizarVolante, giroAtual, salvar as salvarVolante, restaurarPadrao } from './volante.js';
 import * as som from './som.js';
 import * as musica from './musica.js';
@@ -8,6 +8,8 @@ import { Clima, sortearClima, NOMES as NOMES_CLIMA } from './clima.js';
 import { Perigos, TIPOS as TIPOS_PERIGO } from './perigos.js';
 import { criarNpcs, atualizarNpcs } from './npcs.js';
 import { Minimapa } from './minimapa.js';
+import * as boneco from './boneco.js';
+import * as rede from './rede.js';
 
 const $ = id => document.getElementById(id);
 const tela = $('tela');
@@ -68,8 +70,14 @@ const E = {
   rostoAte: 0, reclamouEm: -9, cabeca: { x: 0, y: 0 }, luzesCarro: [],
   virar: 0, roda: 0, prof: PROF_BASE, tremor: 0, angCena: 0, giroFiltro: 0, imuneAte: -9, fugir: 0,
   npcs: [], posicao: 6, musica: 0, terminouEm: null,
+  online: false, remotos: [],
 };
-const distJog = () => (E.volta - 1) * COMPR + E.pos;
+// os carros que aparecem na pista: adversários do computador (sozinho) ou os amigos (online)
+const carros = () => (E.online ? E.remotos : E.npcs);
+// perfil do Forma Palavras (gamertag, boneco, XP)
+let PERFIL = { tag: '', look: null, xp: 0, ach: {} };
+let cabecaJog = null, cabecasNpc = [];
+const distJog = () => (E.terminouEm != null ? VOLTAS * COMPR + E.pos : (E.volta - 1) * COMPR + E.pos);
 const escalaCarro = () => Math.max(1, Math.round((W * 0.27) / CARRO_W));
 const largCarro = () => (CARRO_W * escalaCarro()) / W;     // em "meias pistas"
 
@@ -192,7 +200,8 @@ function desenhar(dt) {
   const juntar = o => { const i = ((o.i % N) + N) % N; if (!dinamicos.has(i)) dinamicos.set(i, []); dinamicos.get(i).push(o); };
   for (const o of perigos.objetos(E.t)) juntar(o);
   const lc = largCarro();
-  for (const n of E.npcs) {
+  for (const n of carros()) {
+    if (n.oculto) continue;
     const z = n.dist + Z_JOG, p = ((z % COMPR) + COMPR) % COMPR;
     juntar({ i: Math.floor(p / SEG), pct: (p % SEG) / SEG, x: n.x, img: n.imgs[n.virar + 1], mundo: lc, alt: 0, npc: n });
   }
@@ -235,7 +244,7 @@ function desenhar(dt) {
         if (o.espelhar) { g.translate(Math.round(sx + dw), 0); g.scale(-1, 1); g.drawImage(o.img, 0, Math.round(sy), Math.round(dw), Math.round(dh)); }
         else g.drawImage(o.img, Math.round(sx), Math.round(sy), Math.round(dw), Math.round(dh));
         g.restore();
-        if (o.npc) { const ly = sy + dh * 17.5 / 36; luzes.push([sx + dw * 9 / 56, ly, dw * 0.16, 'rgba(255,40,30,A)'], [sx + dw * 47 / 56, ly, dw * 0.16, 'rgba(255,40,30,A)']); }
+        if (o.npc) { const ly = sy + dh * 25.5 / 44; luzes.push([sx + dw * 9 / 56, ly, dw * 0.16, 'rgba(255,40,30,A)'], [sx + dw * 47 / 56, ly, dw * 0.16, 'rgba(255,40,30,A)']); }
         if (o.luz) luzes.push([sx + dw / 2, sy + dh / 2, dw * 0.7, o.luz]);
       }
     }
@@ -281,7 +290,7 @@ function desenharJogador() {
     g.translate(W / 2, 0); g.scale(Math.abs(fase) < 0.25 ? 0.25 * Math.sign(fase || 1) : fase, 1); g.translate(-W / 2, 0);
   }
   const r = desenharCarro(g, ox, oy, s, {
-    cor: corPorId(pref.cor).c,
+    cor: corPorId(pref.cor).c, cabeca: cabecaJog,
     virar: E.virar, roda: E.roda | 0, freando: !E.acel && E.vel > 10,
     chama: E.t < E.turboAte ? Math.floor(E.t * 20) : 0,
     rosto: E.t < E.rostoAte,
@@ -393,16 +402,19 @@ function atualizar(dt) {
 
   // adversários
   const dj = distJog();
-  atualizarNpcs(E.npcs, dt, { segs, SEG, COMPR, V_MAX, distJog: E.terminouEm != null ? -1e12 : dj, correndo: correndo || E.fase === 'fim', perigos, t: E.t, rand, VOLTAS, tempo: E.tempo });
-  for (const n of E.npcs) {
+  if (!E.online) atualizarNpcs(E.npcs, dt, { segs, SEG, COMPR, V_MAX, distJog: E.terminouEm != null ? -1e12 : dj, correndo: correndo || E.fase === 'fim', perigos, t: E.t, rand, VOLTAS, tempo: E.tempo });
+  else atualizarRemotos(dt);
+  for (const n of carros()) {
     if (E.terminouEm != null) break;
+    if (n.oculto || (E.online && n.terminou != null)) continue;
     const dz = n.dist - dj;
     if (Math.abs(dz) < 280 && Math.abs(n.x - E.x) < lc && E.t > (n.bateuEm || 0) + 0.6) {
       // batida "macia": os dois perdem um pouco e se afastam
       n.bateuEm = E.t;
-      E.vel *= 0.85; n.vel *= 0.85;
+      E.vel *= 0.85;
       const lado = Math.sign(E.x - n.x) || 1;
-      E.x += lado * 0.18; n.x -= lado * 0.18; n.alvoX = n.x;
+      E.x += lado * 0.18;
+      if (!E.online) { n.vel *= 0.85; n.x -= lado * 0.18; n.alvoX = n.x; }
       E.tremor = 0.5; som.batida(); reclamar('carro');
     }
   }
@@ -424,11 +436,15 @@ function atualizar(dt) {
   }
   if (E.fase === 'correndo') {
     const minha = distJog();
-    const pos = 1 + E.npcs.filter(n => n.dist > minha).length;
+    const pos = 1 + carros().filter(n => !n.oculto && ((E.online && n.terminou != null) || n.dist > minha)).length;
     if (pos > E.posicao && E.tempo > 6 && Math.random() < 0.4) reclamar('ultrapassado');
     E.posicao = pos;
   }
-  perigos.atualizar(E.t, iJog, correndo, rand);
+  if (E.online) {
+    // o anfitrião sorteia os perigos à frente de quem está liderando
+    let lider = dj; for (const n of E.remotos) if (!n.oculto && n.terminou == null) lider = Math.max(lider, n.dist);
+    perigos.atualizar(E.t, iJog, correndo && M.host, rand, Math.floor((((lider + Z_JOG) % COMPR) + COMPR) % COMPR / SEG));
+  } else perigos.atualizar(E.t, iJog, correndo, rand);
   clima.atualizar(dt, pct);
   E.ceu += 0.0004 * jSeg.curva * pct;
   E.morros += 0.0009 * jSeg.curva * pct;
@@ -465,7 +481,7 @@ function hud() {
   $('hudMelhor').textContent = E.voltas.length ? fmt(Math.min(...E.voltas)) : '–';
   $('hudVel').textContent = Math.round(E.vel / V_MAX * KMH);
   $('hudPos').textContent = E.posicao + 'º';
-  $('hudPosTotal').textContent = '/' + (E.npcs.length + 1);
+  $('hudPosTotal').textContent = '/' + (carros().filter(n => !n.oculto).length + 1);
   $('barraTurboCheia').style.width = (E.t < E.turboAte ? 100 : E.turbo * 100) + '%';
   $('btnTurbo').classList.toggle('pronto', E.turbo >= 0.2 && E.t >= E.turboAte);
   const giro = E.modo === 'sensor' ? volante.valor : teclaVol;
@@ -484,9 +500,9 @@ function hud() {
     $('perigoDica').textContent = p.h.lado < 0 ? 'vá pela DIREITA ➜' : '⬅ vá pela ESQUERDA';
   } else el.hidden = true;
   if (minimapa) {
-    const carros = E.npcs.map(n => ({ i: Math.floor(((((n.dist + Z_JOG) % COMPR) + COMPR) % COMPR) / SEG), cor: corPorId(n.cor).c[0] }));
-    carros.push({ i: iJog, cor: corPorId(pref.cor).c[0], eu: true });
-    minimapa.desenhar(carros, perigos.lista, LARGADA);
+    const pts = carros().filter(n => !n.oculto).map(n => ({ i: Math.floor(((((n.dist + Z_JOG) % COMPR) + COMPR) % COMPR) / SEG), cor: corPorId(n.cor).c[0] }));
+    pts.push({ i: iJog, cor: corPorId(pref.cor).c[0], eu: true });
+    minimapa.desenhar(pts, perigos.lista, LARGADA);
   }
 }
 
@@ -497,7 +513,7 @@ function toast(t, ms = 1400) {
 }
 
 // ---------- telas e fluxo ----------
-const telas = ['telaInicio', 'telaAviso', 'telaGire', 'telaCalibra', 'telaAjustes', 'telaFim'];
+const telas = ['telaInicio', 'telaAviso', 'telaGire', 'telaCalibra', 'telaAjustes', 'telaFim', 'telaPerfil', 'telaSala', 'telaComo'];
 function mostrar(id) { for (const t of telas) $(t).hidden = t !== id; }
 
 const UA = navigator.userAgent || '';
@@ -540,19 +556,21 @@ function montarCores() {
   }
   const pv = $('previaCarro'), pg = pv.getContext('2d');
   pg.clearRect(0, 0, pv.width, pv.height);
-  desenharCarro(pg, 0, 0, 1, { cor: corPorId(pref.cor).c, virar: 0, roda: 0 });
+  pv.height = 44; pg.imageSmoothingEnabled = false;
+  desenharCarro(pg, 0, 8, 1, { cor: corPorId(pref.cor).c, virar: 0, roda: 0, cabeca: cabecaJog });
 }
 
 function prepararInicio() {
   if (!TOQUE) {
-    $('txtInicio').textContent = 'No computador não tem sensor de movimento: dá pra jogar pelo teclado.';
-    $('btnTeclado').hidden = false; $('dicaTeclado').hidden = false;
-    $('btnLigar').textContent = 'Ligar volante (celular)';
-    $('btnLigar').classList.replace('grande', 'sec');
+    $('txtInicio').textContent = 'No computador não tem sensor de movimento: dá pra jogar pelo teclado.'; $('txtInicio').hidden = false;
+    $('dicaTeclado').hidden = false;
   }
   montarCores();
+  desenharPiloto();
   mostrar('telaInicio');
   if (EMBUTIDO) avisoEmbutido();
+  const sala = (params.get('sala') || '').toUpperCase();
+  if (/^[A-Z]{4}$/.test(sala)) { $('codigoSala').value = sala; $('btnEntrarConvite').hidden = false; $('btnEntrarConvite').textContent = `Entrar na sala ${sala}`; }
 }
 
 function telaCheia() {
@@ -564,21 +582,37 @@ function telaCheia() {
   try { navigator.wakeLock && navigator.wakeLock.request('screen').catch(() => {}); } catch {}
 }
 
-$('btnLigar').onclick = () => {
-  const pedido = ligar();          // primeiro de tudo (o iPhone exige que seja direto do toque)
+function avisoSensor(r) {
+  if (r === 'negado') aviso('Volante bloqueado', IOS
+    ? 'O iPhone não deixou o jogo usar o sensor de movimento. Para liberar: <b>feche esta aba</b> do Safari, abra o link de novo e toque em <b>Permitir</b>. Se não aparecer a pergunta: Ajustes › Apps › Safari › Avançado › Dados dos Sites, apague <b>justletmein2.github.io</b> e tente de novo.'
+    : 'O navegador não deixou usar o sensor de movimento. Toque no cadeado ao lado do endereço › Permissões › libere <b>Sensores de movimento</b>, e recarregue a página.',
+    { tentar: () => mostrar('telaInicio') });
+  else aviso('Sem sensor', 'Não chegou nenhum dado do sensor de movimento. Se estiver dentro de outro app (WhatsApp, Instagram), abra no Chrome ou Safari. Se for computador, use o teclado.',
+    { copiar: true, tentar: () => mostrar('telaInicio') });
+}
+// Liga o controle (volante no celular, teclado no computador).
+// Tem que ser chamada logo no começo do toque no botão: o iPhone exige isso pra pedir o sensor.
+function prepararControle() {
+  if (!TOQUE) { som.iniciarSom(); E.modo = 'teclado'; redimensionar(); return Promise.resolve(true); }
+  if (E.modo === 'sensor' && volante.temSensor) { som.iniciarSom(); return Promise.resolve(true); }
+  const pedido = ligar();
   som.iniciarSom();
-  if (TOQUE) telaCheia();
-  pedido.then(r => {
-    if (r === 'ok') { E.modo = 'sensor'; redimensionar(); irCalibrar(); }
-    else if (r === 'negado') aviso('Volante bloqueado', IOS
-      ? 'O iPhone não deixou o jogo usar o sensor de movimento. Para liberar: <b>feche esta aba</b> do Safari, abra o link de novo e toque em <b>Permitir</b>. Se não aparecer a pergunta: Ajustes › Apps › Safari › Avançado › Dados dos Sites, apague <b>justletmein2.github.io</b> e tente de novo.'
-      : 'O navegador não deixou usar o sensor de movimento. Toque no cadeado ao lado do endereço › Permissões › libere <b>Sensores de movimento</b>, e recarregue a página.',
-      { tentar: () => mostrar('telaInicio') });
-    else aviso('Sem sensor', 'Não chegou nenhum dado do sensor de movimento. Se estiver dentro de outro app (WhatsApp, Instagram), abra no Chrome ou Safari. Se for computador, use o teclado.',
-      { copiar: true, tentar: () => mostrar('telaInicio') });
+  telaCheia();
+  return pedido.then(r => {
+    if (r === 'ok') { E.modo = 'sensor'; redimensionar(); return true; }
+    avisoSensor(r); return false;
   });
+}
+$('btnSolo').onclick = () => {
+  prepararControle().then(ok => { if (ok) { if (E.modo === 'sensor') irCalibrar(); else novaCorrida(); } });
 };
-$('btnTeclado').onclick = () => { som.iniciarSom(); E.modo = 'teclado'; redimensionar(); novaCorrida(); };
+$('btnCriarSala').onclick = () => {
+  const pc = prepararControle();
+  pc.then(ok => { if (!ok) return; if (!PERFIL.tag) abrirEditor(criarSalaAgora); else criarSalaAgora(); });
+};
+$('btnEntrarSala').onclick = () => entrarClique($('codigoSala').value);
+$('btnEntrarConvite').onclick = () => entrarClique($('codigoSala').value);
+$('codigoSala').addEventListener('input', e => { e.target.value = e.target.value.toUpperCase().replace(/[^A-Z]/g, '').slice(0, 4); });
 
 let calibrarDepois = 'corrida';
 function irCalibrar(depois = 'corrida') {
@@ -600,12 +634,17 @@ function aleatorio(semente) {
 }
 
 let contTimer = null;
+function zerarCorrida() {
+  Object.assign(E, { pos: 0, x: 0, vel: 0, volta: 1, tempo: 0, tempoVolta: 0, voltas: [], turbo: 0, turboAte: 0, girando: 0, rostoAte: 0, pausado: false, tremor: 0, terminouEm: null, t: 0, reclamouEm: -9, imuneAte: -9, fugir: 0, giroFiltro: 0, acel: false });
+}
 function novaCorrida() {
   clearInterval(contTimer);
   musica.parar();
   rand = params.get('semente') ? aleatorio(sementeDe(params.get('semente'))) : Math.random;
-  Object.assign(E, { pos: 0, x: 0, vel: 0, volta: 1, tempo: 0, tempoVolta: 0, voltas: [], turbo: 0, turboAte: 0, girando: 0, rostoAte: 0, pausado: false, tremor: 0, terminouEm: null, t: 0, reclamouEm: -9, imuneAte: -9, fugir: 0, giroFiltro: 0 });
-  E.npcs = criarNpcs(pref.cor, rand, COMPR, SEG);
+  zerarCorrida();
+  perigos.aoCriar = null;
+  E.online = false; E.remotos = [];
+  E.npcs = criarNpcs(pref.cor, rand, COMPR, SEG, cabecasNpc);
   E.posicao = E.npcs.length + 1;
   perigos.reiniciar();
   // clima: sorteado (ou forçado pelo endereço, pra teste: ?clima=noite-chuva)
@@ -629,7 +668,7 @@ function novaCorrida() {
       clearInterval(contTimer);
       $('contagem').textContent = 'VAI!'; som.bip(880, 0.35);
       E.fase = 'correndo';
-      if (params.get('perigo')) perigos.proximo = E.t + 2;
+      perigos.proximo = E.t + (params.get('perigo') ? 2 : 8);
       musica.tocar(E.musica);
       setTimeout(() => { $('contagem').hidden = true; }, 700);
     }
@@ -642,23 +681,27 @@ function terminar() {
   E.acel = false;
   musica.parar();
   som.bip(660, 0.15); setTimeout(() => som.bip(880, 0.15), 160); setTimeout(() => som.bip(1320, 0.4), 320);
-  const lista = [{ nome: 'Você', tempo: E.tempo, eu: true, cor: pref.cor }];
-  for (const n of E.npcs) {
+  if (E.online) return terminarOnline();
+  const lista = [{ nome: PERFIL.tag || 'Você', tempo: E.tempo, eu: true, cor: pref.cor, look: PERFIL.look }];
+  E.npcs.forEach((n, k) => {
     const tempo = n.terminou != null ? n.terminou : E.tempo + Math.max(0, VOLTAS * COMPR - n.dist) / Math.max(n.vel, V_MAX * 0.6);
-    lista.push({ nome: n.nome, tempo, cor: n.cor });
-  }
+    lista.push({ nome: n.nome, tempo, cor: n.cor, look: npcLooks[k] });
+  });
   lista.sort((a, b) => a.tempo - b.tempo);
   const minha = lista.findIndex(l => l.eu) + 1;
   const medalha = ['🥇', '🥈', '🥉'];
   $('fimTitulo').textContent = minha === 1 ? '🏆 Você venceu!' : `🏁 Você chegou em ${minha}º`;
   $('fimLista').innerHTML = lista.map((l, i) => `<li class="${l.eu ? 'eu' : ''}"><span>${medalha[i] || (i + 1) + 'º'}</span><i style="background:${corPorId(l.cor).c[0]}"></i><b>${l.nome}</b><em>${fmt(l.tempo)}</em></li>`).join('');
+  podio(lista.slice(0, 3).map(l => ({ nome: l.nome, look: l.look })));
   $('fimMelhor').textContent = fmt(Math.min(...E.voltas));
   $('fimVoltas').textContent = E.voltas.map((v, i) => `Volta ${i + 1}: ${fmt(v)}`).join(' · ');
+  modoFim(false);
+  ganharXP(5 + (minha === 1 ? 5 : 0));
   setTimeout(() => mostrar('telaFim'), 900);
 }
 $('btnDeNovo').onclick = () => novaCorrida();
 $('btnFimAjustes').onclick = () => abrirAjustes();
-$('btnFimInicio').onclick = () => { E.fase = 'inicio'; $('hud').hidden = true; $('controles').hidden = true; montarCores(); mostrar('telaInicio'); };
+$('btnFimInicio').onclick = () => irInicio();
 
 // ---------- ajustes ----------
 const CAMPOS = [['cfgAngulo', 'angulo', v => v + '°'], ['cfgMorta', 'morta', v => v + '°'], ['cfgSuave', 'suave', v => Math.round(v * 100) + '%'], ['cfgCentro', 'centro', v => (+v).toFixed(1)]];
@@ -688,14 +731,18 @@ $('btnRecalibrar').onclick = () => { if (E.modo === 'sensor') irCalibrar('ajuste
 $('btnReiniciar').onclick = () => novaCorrida();
 $('btnContinuar').onclick = () => {
   if (E.fase === 'fim') { mostrar('telaFim'); return; }
-  mostrar(null); E.pausado = false;
-  if (E.fase === 'correndo') musica.tocar(E.musica);
+  if (E.fase === 'sala') { mostrar('telaSala'); return; }
+  if (E.fase === 'inicio') { mostrar('telaInicio'); return; }
+  mostrar(null);
+  if (E.pausado && E.fase === 'correndo') musica.tocar(E.musica);
+  E.pausado = false;
 };
 function abrirAjustes() {
   if (E.fase === 'inicio') return;
-  E.pausado = E.fase === 'correndo' || E.fase === 'contagem';
+  E.pausado = !E.online && (E.fase === 'correndo' || E.fase === 'contagem');
   E.acel = false;
-  musica.parar();
+  if (!E.online) musica.parar();
+  $('btnReiniciar').hidden = E.online;
   preencherAjustes();
   mostrar('telaAjustes');
 }
@@ -719,7 +766,7 @@ addEventListener('keydown', e => {
 });
 addEventListener('keyup', e => { teclas[e.code] = false; });
 addEventListener('blur', () => { for (const k in teclas) teclas[k] = false; });
-document.addEventListener('visibilitychange', () => { if (document.hidden) { som.silenciarMotor(); musica.parar(); if (E.fase === 'correndo') abrirAjustes(); } });
+document.addEventListener('visibilitychange', () => { if (document.hidden && !E.online) { som.silenciarMotor(); musica.parar(); if (E.fase === 'correndo') abrirAjustes(); } });
 
 // ---------- celular em pé / trava de rotação ----------
 function conferirDeitado() {
@@ -742,6 +789,327 @@ function girarCena(dt) {
   E.giroFiltro += (alvo - E.giroFiltro) * k;
   E.angCena += (E.giroFiltro - E.angCena) * k;
   tela.style.transform = Math.abs(E.angCena) > 0.05 ? `rotate(${(-E.angCena).toFixed(2)}deg)` : '';
+}
+
+// ---------- perfil do Forma Palavras ----------
+const esc = t => String(t ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const TAG_OK = /^[\p{L}\p{N}_]{3,14}$/u;     // a mesma regra de nome do Forma Palavras
+let npcLooks = [];
+async function carregarPerfil() {
+  // o que o Forma Palavras guardou neste aparelho (mesmo site)
+  try { const l = JSON.parse(localStorage.getItem('cp_perfil2') || 'null'); if (l && l.tag) PERFIL = { ...PERFIL, tag: l.tag, look: l.look, xp: l.xp || 0, ach: l.ach || {} }; } catch {}
+  await boneco.carregarAvatar();
+  if (boneco.av()) {
+    npcLooks = [0, 1, 2, 3, 4].map(() => boneco.lookAleatorio());
+    cabecasNpc = await Promise.all(npcLooks.map(l => boneco.cabecas(l)));
+  }
+  await atualizarCabeca(); desenharPiloto();
+  try {
+    await rede.conectar();
+    const p = await rede.lerPerfil();
+    if (p && p.tag) PERFIL = { ...PERFIL, ...p };
+  } catch (e) { console.warn('Sem conexão com o servidor', e); }
+  if (!PERFIL.look) { try { PERFIL.look = JSON.parse(localStorage.getItem('pnt-look') || 'null'); } catch {} }
+  await atualizarCabeca(); desenharPiloto();
+}
+async function atualizarCabeca() { cabecaJog = PERFIL.look ? await boneco.cabecas(PERFIL.look) : null; if (E.fase === 'inicio') montarCores(); }
+function desenharPiloto() {
+  const box = $('piloto');
+  const svg = PERFIL.look ? boneco.frenteSVG(PERFIL.look, 56) : '';
+  box.innerHTML = `<div class="rosto">${svg || '🙂'}</div><div class="nomeP"><b>${esc(PERFIL.tag || 'Seu piloto')}</b><small>${PERFIL.tag ? 'Nível ' + boneco.nivelDe(PERFIL.xp) : 'Toque em Editar pra montar'}</small></div><button id="btnEditarPiloto" class="sec mini">Editar</button>`;
+  $('btnEditarPiloto').onclick = () => abrirEditor();
+}
+let rascunho = null, depoisEditor = null;
+function abrirEditor(depois) {
+  depoisEditor = depois || null;
+  if (!boneco.av()) { toast('Precisa de internet pra carregar os bonecos', 2500); return; }
+  rascunho = { ...(PERFIL.look || boneco.av().lookPadrao()) };
+  $('nomePiloto').value = PERFIL.tag || '';
+  const prev = () => { $('previaBoneco').innerHTML = boneco.frenteSVG(rascunho, 110); };
+  prev();
+  boneco.montarEditor($('partesBoneco'), rascunho, boneco.nivelDe(PERFIL.xp), PERFIL.ach, prev);
+  $('dicaLogin').hidden = !!PERFIL.tag;
+  mostrar('telaPerfil');
+}
+$('btnSalvarPiloto').onclick = async () => {
+  const tag = $('nomePiloto').value.trim();
+  if (!TAG_OK.test(tag)) { toast('Nome com 3 a 14 letras ou números (sem espaço)', 2500); return; }
+  $('btnSalvarPiloto').disabled = true;
+  try {
+    if (rede.conectado()) {
+      if (tag !== PERFIL.tag && !(await rede.reservarTag(tag, PERFIL.tag))) { toast('Esse nome já tem dono, escolha outro 🙂', 2500); return; }
+      await rede.salvarPerfil({ tag, look: rascunho });
+    }
+    PERFIL.tag = tag; PERFIL.look = { ...rascunho };
+    try { localStorage.setItem('pnt-look', JSON.stringify(PERFIL.look)); } catch {}
+    await atualizarCabeca(); desenharPiloto();
+    if (M.code) rede.atualizarEu(M.code, publico()).catch(() => {});
+    const d = depoisEditor; depoisEditor = null;
+    if (d) d(); else mostrar(M.code ? 'telaSala' : 'telaInicio');
+  } catch (e) { toast('Não deu pra salvar: ' + (e.message || e), 3000); }
+  finally { $('btnSalvarPiloto').disabled = false; }
+};
+$('btnCancelarPiloto').onclick = () => { depoisEditor = null; mostrar(M.code ? 'telaSala' : 'telaInicio'); };
+
+// XP vai pro mesmo nível do Forma Palavras
+async function ganharXP(n) {
+  if (!PERFIL.tag || !rede.conectado()) return;
+  try {
+    const p = await rede.lerPerfil();
+    const xp = ((p && p.xp) || 0) + n;
+    await rede.salvarPerfil({ xp });
+    PERFIL.xp = xp;
+    setTimeout(() => toast(`+${n} XP pro seu boneco ⭐`, 2000), 1200);
+  } catch {}
+}
+
+function podio(top) {
+  const med = ['🥇', '🥈', '🥉'];
+  const ordem = [1, 0, 2].filter(i => top[i]);
+  $('podio').innerHTML = ordem.map(i => `<div class="degrau d${i + 1}"><div class="pula" style="animation-delay:${i * 0.15}s">${top[i].look ? boneco.frenteSVG(top[i].look, i === 0 ? 72 : 56) : '<span class="semB">🙂</span>'}</div><b>${esc(top[i].nome)}</b><div class="bloco">${med[i]}</div></div>`).join('');
+}
+function modoFim(online) {
+  $('btnDeNovo').hidden = online; $('btnFimAjustes').hidden = online; $('btnFimInicio').hidden = online;
+  $('btnNovaRodada').hidden = !(online && M.host);
+  $('btnSairSala2').hidden = !online;
+  $('fimEspera').hidden = !online || M.host;
+}
+
+// ---------- salas (multiplayer) ----------
+const M = { code: null, host: false, meta: null, players: {}, corrida: { estado: {}, resultado: {}, perigos: {} }, sairSala: null, sairCorrida: null, rodada: -1, enviadoEm: 0, perigosVistos: new Set(), calibrado: false, xpDado: false };
+const publico = () => ({ name: PERFIL.tag, look: PERFIL.look || null, lvl: boneco.nivelDe(PERFIL.xp), cor: pref.cor });
+const linkSala = code => location.origin + location.pathname + '?sala=' + code + (rede.LOCAL ? '&local=1' : '');
+
+async function criarSalaAgora() {
+  try { await rede.conectar(); const code = await rede.criarSala(); await entrarNaSala(code); }
+  catch (e) { console.warn(e); toast('Não deu pra criar a sala: ' + (e.message || e), 3500); mostrar('telaInicio'); }
+}
+function entrarClique(code) {
+  code = (code || '').toUpperCase().trim();
+  if (!/^[A-Z]{4}$/.test(code)) { toast('O código da sala tem 4 letras'); return; }
+  prepararControle().then(ok => {
+    if (!ok) return;
+    const ir = () => entrarNaSala(code).catch(e => { console.warn(e); toast('Não deu pra entrar: ' + (e.message || e), 3500); mostrar('telaInicio'); });
+    if (!PERFIL.tag) abrirEditor(ir); else ir();
+  });
+}
+async function entrarNaSala(code) {
+  await rede.conectar();
+  const meta = await rede.lerMeta(code);
+  if (!meta) { toast('Não achei a sala ' + code, 2500); mostrar('telaInicio'); return; }
+  sairDaSala();
+  M.code = code; M.rodada = -1; M.meta = meta; M.players = {};
+  E.fase = 'sala'; E.online = false;
+  $('hud').hidden = true; $('controles').hidden = true;
+  try { history.replaceState(null, '', '?sala=' + code + (rede.LOCAL ? '&local=1' : '')); } catch {}
+  desenharSala();
+  mostrar('telaSala');
+  M.sairSala = await rede.entrarSala(code, publico(), st => { M.meta = st.meta; M.players = st.players; aoMudarSala(); });
+  M.sairCorrida = rede.ouvirCorrida(code, (st, k) => {
+    M.corrida = st;
+    if (k === 'perigos') receberPerigos();
+    if (k === 'resultado' && E.online && E.fase === 'fim') desenharFimOnline();
+  });
+}
+function sairDaSala() {
+  if (M.sairSala) M.sairSala();
+  if (M.sairCorrida) M.sairCorrida();
+  M.sairSala = M.sairCorrida = null; M.code = null; M.meta = null; E.online = false; E.remotos = [];
+  try { history.replaceState(null, '', location.pathname + (rede.LOCAL ? '?local=1' : '')); } catch {}
+}
+function irInicio() {
+  sairDaSala(); musica.parar();
+  E.fase = 'inicio';
+  $('hud').hidden = true; $('controles').hidden = true; $('contagem').hidden = true;
+  montarCores(); desenharPiloto(); mostrar('telaInicio');
+}
+$('btnSairSala').onclick = irInicio;
+$('btnComoJogar').onclick = () => mostrar('telaComo');
+$('btnFecharComo').onclick = () => mostrar('telaInicio');
+$('btnAjustesMenu').onclick = () => { preencherAjustes(); $('btnReiniciar').hidden = true; mostrar('telaAjustes'); };
+$('btnSairSala2').onclick = irInicio;
+$('btnConvidar').onclick = async () => {
+  const url = linkSala(M.code);
+  try { if (navigator.share) { await navigator.share({ title: 'Pé na Tábua', text: `Bora correr? Sala ${M.code}`, url }); return; } } catch { return; }
+  try { await navigator.clipboard.writeText(url); toast('Link copiado! Mande pros amigos 👍'); } catch { toast(url, 5000); }
+};
+$('btnCorSala').onclick = () => { const i = CORES_CARRO.findIndex(c => c.id === pref.cor); pref.cor = CORES_CARRO[(i + 1) % CORES_CARRO.length].id; salvarPref(); rede.atualizarEu(M.code, { cor: pref.cor }); };
+$('btnPilotoSala').onclick = () => abrirEditor();
+
+function aoMudarSala() {
+  const meta = M.meta;
+  if (!meta || !M.code) return;
+  const eu = rede.meuId();
+  M.host = meta.host === eu;
+  // o anfitrião saiu? quem entrou primeiro (e está online) assume
+  const online = Object.entries(M.players).filter(([, p]) => p.online).sort((a, b) => (a[1].entrou || 0) - (b[1].entrou || 0));
+  if (online.length && !online.find(([id]) => id === meta.host) && online[0][0] === eu) rede.atualizarMeta(M.code, { host: eu }).catch(() => {});
+  if (E.online) montarRemotos();
+  if ((meta.status === 'contagem' || meta.status === 'correndo') && meta.rodada !== M.rodada && E.fase === 'sala') {
+    if (meta.status === 'contagem' && meta.inicio - rede.agora() > 800) { M.rodada = meta.rodada; iniciarOnline(meta); return; }
+    desenharSala('Tem uma corrida acontecendo agora. Você entra na próxima! 🏁');
+    return;
+  }
+  if (meta.status === 'lobby' && E.online && E.fase !== 'sala') { voltarPraSala(); return; }
+  if (E.fase === 'sala') desenharSala();
+  if (E.online && E.fase === 'fim') { modoFim(true); desenharFimOnline(); }
+}
+function desenharSala(msg) {
+  $('salaCodigo').textContent = M.code || '';
+  const lista = Object.entries(M.players).filter(([, p]) => p.online);
+  $('salaJogadores').innerHTML = lista.map(([id, p]) => `<li>${p.look ? boneco.frenteSVG(p.look, 44) : '<span class="semB">🙂</span>'}<i style="background:${corPorId(p.cor).c[0]}"></i><b>${esc(p.name || '?')}</b>${M.meta && id === M.meta.host ? '<small>anfitrião</small>' : ''}${id === rede.meuId() ? '<small>você</small>' : ''}</li>`).join('') || '<li>Entrando…</li>';
+  $('btnComecar').hidden = !M.host || (M.meta && M.meta.status !== 'lobby' && msg);
+  $('salaEspera').textContent = msg || (M.host
+    ? (lista.length < 2 ? 'Mande o link pros amigos! (Dá pra começar sozinho pra testar.)' : 'Todo mundo dentro? Pode começar!')
+    : 'Esperando o anfitrião começar a corrida…');
+}
+$('btnComecar').onclick = async () => {
+  if (!M.host || !M.code) return;
+  $('btnComecar').disabled = true;
+  try {
+    await rede.limparCorrida(M.code);
+    const c = sortearClima(Math.random);
+    const mus = Math.random() < 0.65 ? (c.hora === 'noite' ? 1 : c.tempo === 'chuva' ? 3 : c.tempo === 'neve' ? 2 : 0) : Math.floor(Math.random() * 4);
+    await rede.atualizarMeta(M.code, { status: 'contagem', rodada: ((M.meta && M.meta.rodada) || 0) + 1, inicio: rede.agora() + 6000, clima: c, musica: mus, semente: Math.random().toString(36).slice(2, 8) });
+  } catch (e) { toast('Não deu pra começar: ' + (e.message || e), 3000); }
+  finally { $('btnComecar').disabled = false; }
+};
+$('btnNovaRodada').onclick = () => { if (M.host) rede.atualizarMeta(M.code, { status: 'lobby' }); };
+
+function iniciarOnline(meta) {
+  clearInterval(contTimer); musica.parar();
+  rand = aleatorio(sementeDe(meta.semente || 'x'));
+  zerarCorrida();
+  E.online = true; E.npcs = [];
+  E.posicao = Object.values(M.players).filter(p => p.online).length || 1;
+  M.perigosVistos = new Set(); M.calibrado = false; M.xpDado = false; M.enviadoEm = 0;
+  perigos.reiniciar();
+  perigos.proximo = 1e9;
+  perigos.aoCriar = h => {
+    if (!M.host || !E.online) return;
+    const id = 'p' + Date.now().toString(36);
+    M.perigosVistos.add(id);
+    rede.publicarPerigo(M.code, id, { tipo: h.tipo, lado: h.lado, s0: h.s0, tc: +E.tempo.toFixed(2) }).catch(() => {});
+  };
+  const c = meta.clima || { hora: 'dia', tempo: 'limpo' };
+  clima.definir(c, CW, CH);
+  E.musica = meta.musica || 0;
+  montarRemotos();
+  // largada lado a lado: cada um num lugar
+  const ids = Object.keys(M.players).sort();
+  const k = Math.max(0, ids.indexOf(rede.meuId()));
+  E.x = [-0.5, 0.5, 0, -0.5, 0.5, 0][k % 6];
+  E.pos = Math.max(0, 600 - Math.floor(k / 2) * 320) % COMPR;
+  mostrar(null);
+  $('hud').hidden = false; $('controles').hidden = !TOQUE && E.modo === 'teclado';
+  if (!minimapa) minimapa = new Minimapa($('minimapa'), segs);
+  minimapa.ajustar();
+  E.fase = 'contagem';
+  $('contagem').hidden = false; $('contagem').textContent = '';
+  toast([NOMES_CLIMA[c.hora], NOMES_CLIMA[c.tempo]].filter(Boolean).join(' '), 2200);
+}
+function tickOnline() {
+  if (!M.meta) return;
+  if (E.fase === 'contagem') {
+    const falta = (M.meta.inicio - rede.agora()) / 1000;
+    const txt = falta > 3 ? (E.modo === 'sensor' ? 'Segure reto!' : 'Prepare-se!') : falta > 0 ? String(Math.ceil(falta)) : 'VAI!';
+    if ($('contagem').textContent !== txt) { $('contagem').textContent = txt; if (falta <= 3 && falta > 0) som.bip(440); }
+    if (falta <= 0.6 && !M.calibrado && E.modo === 'sensor') { calibrar(); M.calibrado = true; }
+    if (falta <= 0) {
+      E.fase = 'correndo'; E.tempo = Math.min(1, -falta);
+      perigos.proximo = E.t + 8;
+      som.bip(880, 0.35); musica.tocar(E.musica);
+      setTimeout(() => { if (E.fase !== 'contagem') $('contagem').hidden = true; }, 700);
+    }
+  }
+  // manda a posição ~8 vezes por segundo
+  const t = performance.now();
+  if ((E.fase === 'correndo' || E.fase === 'fim') && t - M.enviadoEm > 120) {
+    M.enviadoEm = t;
+    rede.enviarEstado(M.code, { d: Math.round(distJog()), x: +E.x.toFixed(3), v: Math.round(E.vel), vi: E.virar, ts: Math.round(rede.agora()) }).catch(() => {});
+  }
+}
+function montarRemotos() {
+  const eu = rede.meuId();
+  const lista = [];
+  for (const [id, p] of Object.entries(M.players)) {
+    if (id === eu) continue;
+    let r = E.remotos.find(x => x.uid === id);
+    if (!r) r = { uid: id, dist: 0, x: 0, virar: 0, imgs: null, oculto: true, terminou: null };
+    r.nome = p.name; r.cor = p.cor || 'azul'; r.online = p.online; r.look = p.look;
+    const chave = r.cor + JSON.stringify(p.look || null);
+    if (r.chave !== chave) {
+      r.chave = chave;
+      const cor = corPorId(r.cor).c;
+      r.imgs = [-1, 0, 1].map(v => carroImg(cor, v));
+      boneco.cabecas(p.look).then(cab => { if (cab && r.chave === chave) r.imgs = [-1, 0, 1].map(v => carroImg(cor, v, null, null, cab)); });
+    }
+    lista.push(r);
+  }
+  E.remotos = lista;
+}
+function atualizarRemotos(dt) {
+  const est = M.corrida.estado || {}, res = M.corrida.resultado || {};
+  for (const r of E.remotos) {
+    const e = est[r.uid];
+    r.terminou = res[r.uid] ? res[r.uid].tempo : null;
+    if (!e || (!r.online && r.terminou == null)) { r.oculto = true; continue; }
+    const idade = Math.max(0, Math.min(0.5, (rede.agora() - e.ts) / 1000));
+    const alvo = e.d + e.v * idade;
+    if (r.oculto || Math.abs(alvo - r.dist) > 4000) r.dist = alvo;
+    else r.dist += (alvo - r.dist) * Math.min(1, dt * 8);
+    r.x += (e.x - r.x) * Math.min(1, dt * 10);
+    r.virar = e.vi || 0;
+    r.oculto = false;
+  }
+}
+function receberPerigos() {
+  if (!E.online) return;
+  for (const [id, h] of Object.entries(M.corrida.perigos || {})) {
+    if (M.perigosVistos.has(id)) continue;
+    M.perigosVistos.add(id);
+    if (M.host) continue;
+    perigos.criar(h.tc + (E.t - E.tempo), 0, Math.random, h.tipo, h.lado, h.s0);
+  }
+}
+function terminarOnline() {
+  const melhor = Math.min(...E.voltas);
+  const lugar = Object.keys(M.corrida.resultado || {}).length + 1;
+  rede.enviarResultado(M.code, { tempo: +E.tempo.toFixed(2), melhor: +melhor.toFixed(2), nome: PERFIL.tag }).catch(() => {});
+  if (!M.xpDado) {
+    M.xpDado = true;
+    const n = 1 + E.remotos.filter(r => !r.oculto || r.terminou != null).length;
+    ganharXP(10 + (n >= 2 ? ([25, 15, 10][lugar - 1] || 0) : 0));
+  }
+  modoFim(true);
+  desenharFimOnline(true);
+  setTimeout(() => mostrar('telaFim'), 900);
+}
+function desenharFimOnline(eu1) {
+  const res = { ...(M.corrida.resultado || {}) };
+  const eu = rede.meuId();
+  if (eu1 && !res[eu]) res[eu] = { tempo: E.tempo, melhor: Math.min(...E.voltas), nome: PERFIL.tag };
+  const chegaram = Object.entries(res).sort((a, b) => a[1].tempo - b[1].tempo);
+  const est = M.corrida.estado || {};
+  const faltam = Object.entries(M.players).filter(([id]) => !res[id] && est[id]);
+  const med = ['🥇', '🥈', '🥉'];
+  const minha = chegaram.findIndex(([id]) => id === eu) + 1;
+  const quem = (id, r) => (M.players[id] || {}).name || (r && r.nome) || '?';
+  $('fimTitulo').textContent = minha === 1 ? '🏆 Você venceu!' : minha ? `🏁 Você chegou em ${minha}º` : '🏁 Fim!';
+  podio(chegaram.slice(0, 3).map(([id, r]) => ({ nome: quem(id, r), look: (M.players[id] || {}).look })));
+  $('fimLista').innerHTML = chegaram.map(([id, r], i) => `<li class="${id === eu ? 'eu' : ''}"><span>${med[i] || (i + 1) + 'º'}</span><i style="background:${corPorId((M.players[id] || {}).cor).c[0]}"></i><b>${esc(quem(id, r))}</b><em>${fmt(r.tempo)}</em></li>`).join('')
+    + faltam.map(([id, p]) => `<li><span>…</span><i style="background:${corPorId(p.cor).c[0]}"></i><b>${esc(p.name || '?')}</b><em>${p.online ? 'correndo…' : 'saiu'}</em></li>`).join('');
+  const rapida = chegaram.reduce((a, [id, r]) => (!a || r.melhor < a.r.melhor ? { id, r } : a), null);
+  $('fimMelhor').textContent = rapida ? `${fmt(rapida.r.melhor)} (${quem(rapida.id, rapida.r)})` : '–';
+  $('fimVoltas').textContent = 'Suas voltas: ' + E.voltas.map((v, i) => `${i + 1}ª ${fmt(v)}`).join(' · ');
+}
+function voltarPraSala() {
+  musica.parar();
+  E.online = false; E.fase = 'sala'; E.remotos = [];
+  perigos.reiniciar();
+  $('hud').hidden = true; $('controles').hidden = true; $('contagem').hidden = true;
+  desenharSala();
+  mostrar('telaSala');
 }
 
 // ---------- bolinhas anti-enjoo ----------
@@ -779,7 +1147,8 @@ let ultimo = performance.now(), acum = 0;
 function quadro(agora) {
   const dt = Math.min(0.1, (agora - ultimo) / 1000); ultimo = agora;
   const emPe = conferirDeitado();
-  const parado = E.pausado || emPe || E.fase === 'inicio' || E.fase === 'calibrando';
+  if (E.online) tickOnline();
+  const parado = E.pausado || (emPe && !E.online) || E.fase === 'inicio' || E.fase === 'calibrando' || E.fase === 'sala';
   if (!parado) {
     acum += dt;
     while (acum >= PASSO) { atualizar(PASSO); acum -= PASSO; }
@@ -801,7 +1170,8 @@ function quadro(agora) {
   requestAnimationFrame(quadro);
 }
 
-window.__pnt = { E, volante, segs, COMPR, V_MAX, novaCorrida, irCalibrar, perigos, clima, pref };
+window.__pnt = { E, volante, segs, COMPR, V_MAX, novaCorrida, irCalibrar, perigos, clima, pref, M, PERFIL: () => PERFIL };
 
 prepararInicio();
+carregarPerfil();
 requestAnimationFrame(quadro);

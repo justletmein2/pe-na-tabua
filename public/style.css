@@ -116,7 +116,7 @@ label.linha input { width: 22px; height: 22px; accent-color: #ffd23f; }
 
 /* escolha de cor */
 #escolhaCor { display: flex; align-items: center; justify-content: center; gap: 12px; margin: 8px 0; flex-wrap: wrap; }
-#previaCarro { width: 112px; height: 72px; image-rendering: pixelated; }
+#previaCarro { width: 112px; height: 88px; image-rendering: pixelated; }
 #cores { display: grid; grid-template-columns: repeat(5, 30px); gap: 6px; }
 .cor { width: 30px; height: 30px; border-radius: 50%; border: 3px solid rgba(255,255,255,.35); }
 .cor.sel { border-color: #ffd23f; box-shadow: 0 0 0 2px #000, 0 0 10px #ffd23f; }
@@ -131,3 +131,46 @@ label.linha input { width: 22px; height: 22px; accent-color: #ffd23f; }
 #fimLista em { font-style: normal; font-variant-numeric: tabular-nums; }
 
 #bolinhas { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1; }
+
+/* piloto e salas */
+#piloto { display: flex; align-items: center; gap: 10px; margin: 10px 0 4px; padding: 6px 10px; border-radius: 14px; background: rgba(0,0,0,.25); text-align: left; }
+#piloto .rosto { width: 56px; height: 56px; font-size: 40px; display: flex; align-items: center; justify-content: center; }
+#piloto .nomeP { flex: 1; } #piloto .nomeP b { display: block; font-size: 18px; } #piloto .nomeP small { opacity: .8; }
+.sec.mini { width: auto; margin: 0; padding: 8px 12px; font-size: 14px; }
+.entrarSala { display: flex; gap: 8px; margin-top: 12px; }
+.entrarSala input, #nomePiloto { flex: 1; min-width: 0; font: inherit; font-size: 20px; font-weight: 800; letter-spacing: 3px; text-align: center; padding: 8px; border-radius: 12px; border: 3px solid #ffd23f; background: #1b1440; color: #fff; text-transform: uppercase; }
+#nomePiloto { text-transform: none; letter-spacing: 0; width: 100%; margin-top: 4px; }
+.entrarSala .sec { width: auto; margin: 0; }
+.link { color: #9fe6ff; }
+.codigo { font-size: 46px; font-weight: 900; letter-spacing: 8px; color: #ffd23f; text-shadow: 3px 3px 0 #000; }
+#salaJogadores { list-style: none; margin: 12px 0 4px; text-align: left; }
+#salaJogadores li { display: flex; align-items: center; gap: 8px; padding: 4px 6px; border-radius: 10px; background: rgba(255,255,255,.07); margin-bottom: 6px; }
+#salaJogadores li i { width: 14px; height: 14px; border-radius: 50%; border: 2px solid #000; }
+#salaJogadores li b { flex: 1; } #salaJogadores small { font-size: 11px; background: #3b2f80; padding: 2px 6px; border-radius: 8px; }
+.semB { font-size: 32px; width: 44px; text-align: center; display: inline-block; }
+.editorTopo { display: flex; gap: 12px; align-items: center; }
+.editorTopo label { flex: 1; }
+#partesBoneco { margin-top: 8px; }
+.parte { display: flex; align-items: center; gap: 6px; margin: 5px 0; }
+.parte span { width: 40%; font-size: 14px; opacity: .85; }
+.parte b { flex: 1; text-align: center; font-size: 14px; }
+.parte button { width: 40px; height: 34px; border-radius: 10px; background: #3b2f80; font-size: 16px; }
+/* pódio */
+#podio { display: flex; justify-content: center; align-items: flex-end; gap: 8px; margin: 6px 0 4px; }
+.degrau { display: flex; flex-direction: column; align-items: center; width: 92px; }
+.degrau b { font-size: 13px; margin: 2px 0; max-width: 92px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.degrau .bloco { width: 100%; background: #3b2f80; border-radius: 8px 8px 0 0; text-align: center; font-size: 22px; padding-top: 4px; }
+.d1 .bloco { height: 54px; background: #c99a12; } .d2 .bloco { height: 38px; background: #8a93a1; } .d3 .bloco { height: 28px; background: #a0612e; }
+.pula { animation: pula .6s ease-in-out infinite alternate; }
+@keyframes pula { from { transform: translateY(0); } to { transform: translateY(-8px); } }
+
+/* menu principal em duas colunas quando o celular está deitado */
+.caixa.menu { width: min(780px, 100%); padding: 12px 16px; }
+.caixa.menu h1 { font-size: 30px; }
+.colunas { display: grid; grid-template-columns: 1fr; gap: 4px 16px; }
+@media (min-width: 600px) { .colunas { grid-template-columns: 1fr 1fr; align-items: center; } }
+.menu .grande { margin-top: 8px; padding: 11px 14px; font-size: 16px; }
+.menu .entrarSala { margin-top: 8px; }
+.menu .entrarSala input { font-size: 17px; padding: 6px; }
+.menu .botoes .sec { margin-top: 8px; }
+.menu #escolhaCor { margin: 4px 0; }

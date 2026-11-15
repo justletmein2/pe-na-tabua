@@ -20,11 +20,12 @@ export class Perigos {
   dentro(h, i) { return ((i - h.s0) % this.N + this.N) % this.N < h.n; }
   ativo(h, t) { return t >= h.tAtivo; }
 
-  criar(t, segJog, rand, tipo, lado) {
+  // s0Fixo: usado quando o perigo veio do anfitrião (multiplayer)
+  criar(t, segJog, rand, tipo, lado, s0Fixo) {
     tipo = tipo || LISTA[Math.floor(rand() * LISTA.length)];
     lado = lado || (rand() < 0.5 ? -1 : 1);
     const n = TIPOS[tipo].comp;
-    const s0 = (segJog + 170 + Math.floor(rand() * 40)) % this.N;
+    const s0 = s0Fixo != null ? s0Fixo : (segJog + 170 + Math.floor(rand() * 40)) % this.N;
     const h = { tipo, lado, s0, n, t0: t, tAtivo: t + AVISO, xmin: lado < 0 ? -4 : -0.1, xmax: lado < 0 ? 0.1 : 4, bolas: [], chamas: [] };
     if (tipo === 'lava') for (let k = 0; k < 12; k++) h.bolas.push({ k: Math.floor(rand() * n), x: lado * (0.15 + rand() * 0.8), tp: t + 0.3 + rand() * (AVISO + 0.4) });
     if (tipo === 'fogo') for (let k = 0; k < n; k += 3) h.chamas.push({ k, x: lado * (0.12 + rand() * 0.85), f: Math.floor(rand() * 2) });
@@ -32,10 +33,12 @@ export class Perigos {
     return h;
   }
 
-  atualizar(t, segJog, correndo, rand) {
-    if (correndo && t > this.proximo && !this.lista.length) {
-      this.criar(t, segJog, rand);
+  // podeCriar: só quem sorteia (sozinho: sempre; multiplayer: o anfitrião), à frente de segRef (o líder)
+  atualizar(t, segJog, podeCriar, rand, segRef = segJog) {
+    if (podeCriar && t > this.proximo && !this.lista.length) {
+      const h = this.criar(t, segRef, rand);
       this.proximo = t + 9 + rand() * 6;
+      if (this.aoCriar) this.aoCriar(h);
     }
     // some depois que o jogador passou (ou depois de um tempo)
     this.lista = this.lista.filter(h => {
