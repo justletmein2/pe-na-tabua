@@ -72,6 +72,8 @@ export function criarPistaPraia() {
   for (let i = 3; i < segs.length; i += 8) por(i, coqs[Math.floor(r() * 3)], 1.35 + r() * 2.4);
   for (let i = 7; i < segs.length; i += 11) por(i, r() < 0.5 ? 'guardaSol1' : 'guardaSol2', -(3.2 + r() * 2));
   for (let i = 60; i < segs.length; i += 160) por(i, 'quiosque', (i / 160) % 2 ? 1.8 : -1.9);
+  // postes bem perto da pista: dão a sensação de velocidade (e acendem à noite)
+  for (let i = 14; i < segs.length; i += 16) { por(i, 'posteE', -1.22); por(i + 8, 'posteD', 1.22); }
   for (let i = 30; i < segs.length; i += 37) por(i, 'pedra', (r() < 0.5 ? -1 : 1) * (1.4 + r() * 1.5));
   // placas de curva do lado de fora, antes de cada curva
   for (let i = 1; i < segs.length; i++) {

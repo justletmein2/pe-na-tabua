@@ -24,7 +24,10 @@
       <button id="btnPausa" aria-label="Ajustes">⚙</button>
       <div id="indicador"><div id="ponteiro"></div></div>
     </div>
-    <div id="hudDir"><b id="hudVel">0</b><span class="rot">km/h</span></div>
+    <canvas id="minimapa"></canvas>
+    <div id="hudDir"><b id="hudVel">0</b><span class="rot">km/h</span>
+      <div id="hudPosBox"><b id="hudPos">6º</b><span id="hudPosTotal">/6</span></div></div>
+    <div id="perigo" hidden><div class="pisca">⚠️ <span id="perigoIcone"></span> <b id="perigoNome"></b> ⚠️</div><small id="perigoDica"></small></div>
     <div id="balao" hidden></div>
     <div id="contagem" hidden></div>
   </div>
@@ -38,7 +41,8 @@
   <section id="telaInicio" class="tela">
     <div class="caixa">
       <h1>PÉ NA TÁBUA</h1>
-      <p class="sub">Teste do volante · pista da praia</p>
+      <p class="sub">Pista da praia · contra o computador</p>
+      <div id="escolhaCor"><canvas id="previaCarro" width="56" height="36"></canvas><div id="cores"></div></div>
       <p id="txtInicio">Segure o celular deitado, como um volante. Para virar, gire o celular.</p>
       <button id="btnLigar" class="grande">Ligar volante</button>
       <button id="btnTeclado" class="grande" hidden>Jogar com teclado</button>
@@ -90,7 +94,9 @@
         <input type="range" id="cfgCentro" min="1" max="2.5" step="0.1">
         <small>Maior = curvas leves mais fáceis, viradas fortes iguais</small></label>
       <label class="linha"><input type="checkbox" id="cfgInverter"> Inverter direção</label>
-      <label class="linha"><input type="checkbox" id="cfgSom"> Som ligado</label>
+      <label class="linha"><input type="checkbox" id="cfgNivelar"> Cenário nivelado (gira ao contrário do celular)</label>
+      <label class="linha"><input type="checkbox" id="cfgSom"> Ronco do motor e efeitos</label>
+      <label class="linha"><input type="checkbox" id="cfgMusica"> Música</label>
       <div class="botoes">
         <button id="btnRecalibrar" class="sec">Recalibrar</button>
         <button id="btnPadrao" class="sec">Voltar ao padrão</button>
@@ -105,12 +111,12 @@
 
   <section id="telaFim" class="tela" hidden>
     <div class="caixa">
-      <h2>🏁 Fim!</h2>
-      <p>Tempo total: <b id="fimTempo"></b></p>
-      <p>Volta mais rápida: <b id="fimMelhor"></b></p>
+      <h2 id="fimTitulo">🏁 Fim!</h2>
+      <ol id="fimLista"></ol>
+      <p>Sua volta mais rápida: <b id="fimMelhor"></b></p>
       <p id="fimVoltas" class="peq"></p>
       <button id="btnDeNovo" class="grande">Correr de novo</button>
-      <button id="btnFimAjustes" class="sec">Ajustar volante</button>
+      <div class="botoes"><button id="btnFimAjustes" class="sec">Ajustar volante</button><button id="btnFimInicio" class="sec">Trocar cor</button></div>
     </div>
   </section>
 

@@ -62,3 +62,5 @@ export function bip(freq = 660, dur = 0.15) {
   g.gain.setTargetAtTime(0, ac.currentTime + dur * 0.7, 0.03);
   o.connect(g); g.connect(ac.destination); o.start(); o.stop(ac.currentTime + dur + 0.2);
 }
+
+export const contexto = () => ac;

@@ -118,6 +118,8 @@ export function criarSprites() {
     setaEsq: { img: placaSeta(-1), mundo: 0.42, bate: 0.8 },
     quiosque: { img: quiosque(), mundo: 1.3, bate: 0.9 },
     pedra: { img: pedra(), mundo: 0.4, bate: 0.9 },
+    posteE: { img: poste(-1), mundo: 0.3, bate: 0.25 },
+    posteD: { img: poste(1), mundo: 0.3, bate: 0.25 },
   };
 }
 
@@ -218,11 +220,11 @@ export function desenharCarro(g, ox, oy, s, o) {
   // piloto (banco da esquerda). Por enquanto um boneco provisório;
   // depois vira o boneco do Forma Palavras (de costas, ou de frente quando reclama)
   const hx = 13 + vt + (o.rosto ? 0 : v), hy = 0;
-  const pele = '#f0c39b', cabelo = '#4a2c17';
+  const pele = o.pele || '#f0c39b', cabelo = o.cabelo || '#4a2c17';
   if (!o.rosto) {
     p(pele, hx - 1, hy + 4, 2, 2); p(pele, hx + 10, hy + 4, 2, 2);          // orelhas
     p(cabelo, hx + 1, hy, 8, 1); p(cabelo, hx, hy + 1, 10, 7); p(cabelo, hx + 1, hy + 8, 8, 1);
-    p('#6b4127', hx + 2, hy + 1, 4, 1);
+    p('rgba(255,255,255,.18)', hx + 2, hy + 1, 4, 1);
   } else {
     p(pele, hx, hy + 1, 10, 8); p(pele, hx + 1, hy + 9, 8, 1);
     p(cabelo, hx, hy, 10, 2); p(cabelo, hx - 1, hy + 1, 2, 3); p(cabelo, hx + 9, hy + 1, 2, 3);
@@ -230,5 +232,127 @@ export function desenharCarro(g, ox, oy, s, o) {
     p('#111', hx + 2, hy + 4, 1, 2); p('#111', hx + 7, hy + 4, 1, 2);          // olhos
     p('#7a1a1a', hx + 3, hy + 7, 4, 2); p('#ffffff', hx + 3, hy + 7, 4, 1);    // boca aberta
   }
-  return { x: ox + (hx + 5) * s, y: oy + hy * s };
+  return {
+    x: ox + (hx + 5) * s, y: oy + hy * s,
+    luzes: [[ox + 9 * s, oy + 17.5 * s], [ox + 47 * s, oy + 17.5 * s]],
+  };
+}
+
+// cores do carro: [principal, sombra, brilho]
+export const CORES_CARRO = [
+  { id: 'vermelho', nome: 'Vermelho', c: ['#e8382f', '#a8221d', '#ff8a7a'] },
+  { id: 'azul', nome: 'Azul', c: ['#2e7fe8', '#1c4fa0', '#8cc4ff'] },
+  { id: 'amarelo', nome: 'Amarelo', c: ['#ffcc1f', '#c58f00', '#fff1a0'] },
+  { id: 'verde', nome: 'Verde', c: ['#2fbf5a', '#1b7a37', '#9cf0b4'] },
+  { id: 'laranja', nome: 'Laranja', c: ['#ff8a1f', '#c25500', '#ffc58a'] },
+  { id: 'rosa', nome: 'Rosa', c: ['#ff6fb5', '#c23d80', '#ffc2e0'] },
+  { id: 'roxo', nome: 'Roxo', c: ['#8f5bff', '#5a2fc2', '#cdb6ff'] },
+  { id: 'preto', nome: 'Preto', c: ['#33363f', '#17181d', '#6d7280'] },
+  { id: 'branco', nome: 'Branco', c: ['#f2f4f7', '#b8bfca', '#ffffff'] },
+  { id: 'prata', nome: 'Prata', c: ['#aab3c0', '#6d7686', '#e3e8ef'] },
+];
+export const corPorId = id => (CORES_CARRO.find(k => k.id === id) || CORES_CARRO[0]);
+
+// carro pronto num canvas (pros adversários)
+export function carroImg(cor, virar, pele, cabelo) {
+  const [c, , g] = novo(CARRO_W, CARRO_H);
+  desenharCarro(g, 0, 0, 1, { cor, virar, roda: 0, pele, cabelo });
+  return c;
+}
+
+// ---------- objetos dos perigos e da beira ----------
+function poste(lado) {
+  // lado = de que lado da pista ele fica; o braço aponta pra pista
+  const [c, p] = novo(16, 60);
+  const bx = lado < 0 ? 3 : 11;
+  p('#5c6470', bx, 6, 2, 54); p('#8a93a1', bx, 6, 1, 54);
+  const ax = lado < 0 ? bx : 2;
+  p('#5c6470', ax, 4, 11, 2);
+  const lx = lado < 0 ? 11 : 1;
+  p('#333', lx, 5, 5, 2); p('#fff6c4', lx + 1, 7, 3, 1);
+  c.luz = { x: (lx + 2.5) / 16, y: 7.5 / 60 };
+  return c;
+}
+function cone() {
+  const [c, p] = novo(10, 12);
+  for (let y = 0; y < 10; y++) { const m = Math.ceil(1 + y * 0.4); p(y > 3 && y < 6 ? '#ffffff' : '#ff7a1a', 5 - m, y, m * 2, 1); }
+  p('#222', 0, 10, 10, 2);
+  return c;
+}
+function caminhao() {
+  // caminhão tombado de lado, com as rodas pra cima
+  const [c, p] = novo(72, 34);
+  p('rgba(0,0,0,.35)', 2, 30, 68, 4);
+  p('#e9eef5', 2, 10, 48, 21); p('#b8c2d0', 2, 27, 48, 4); p('#2e7fe8', 2, 16, 48, 4);
+  p('#ffd23f', 6, 22, 14, 3);
+  p('#d8312f', 50, 12, 20, 19); p('#ff7a6b', 50, 12, 20, 2); p('#9fd8ff', 60, 16, 7, 6);
+  for (const x of [8, 22, 40, 56]) { p('#151515', x, 4, 9, 7); p('#777', x + 3, 6, 3, 3); }
+  p('#c0c6cf', 0, 12, 2, 18);
+  return c;
+}
+function bolaFogo() {
+  const [c, p] = novo(12, 12);
+  p('#b31d0b', 2, 0, 8, 12); p('#b31d0b', 0, 2, 12, 8);
+  p('#ff7a1a', 2, 2, 8, 8); p('#ffd23f', 4, 3, 4, 5); p('#ffffff', 5, 4, 2, 2);
+  return c;
+}
+function chama(f) {
+  const [c, p] = novo(14, 22);
+  const alt = f ? 22 : 19;
+  for (let y = 0; y < alt; y++) {
+    const t = y / alt, m = Math.max(1, Math.round(Math.sin(t * Math.PI * 0.95) * 6 + (f ? (y % 3) - 1 : 0)));
+    const yy = 22 - alt + y;
+    p('#e8380f', 7 - m, yy, m * 2, 1);
+    if (m > 2) p('#ff9f1c', 7 - m + 2, yy, (m - 2) * 2, 1);
+    if (m > 4 && t > 0.4) p('#ffe066', 7 - m + 4, yy, (m - 4) * 2, 1);
+  }
+  return c;
+}
+function onda() {
+  const [c, p] = novo(64, 48);
+  for (let x = 0; x < 64; x++) {
+    const topo = Math.round(14 + 18 * Math.pow(Math.abs(x - 40) / 40, 1.5) - (x > 40 ? 0 : 6 * Math.sin(x / 40 * Math.PI)));
+    p('#1f7fc8', x, topo, 1, 48 - topo); p('#2a96e0', x, topo, 1, 6); p('#e8f8ff', x, topo, 1, 2);
+  }
+  // crista enrolando
+  p('#e8f8ff', 34, 4, 14, 3); p('#e8f8ff', 46, 6, 4, 6); p('#2a96e0', 36, 7, 10, 5); p('#e8f8ff', 44, 12, 4, 2);
+  for (let i = 0; i < 12; i++) p('#ffffff', 4 + i * 5, 40 + (i % 3), 3, 1);
+  return c;
+}
+function dragao(asa) {
+  const [c, p] = novo(52, 30);
+  // corpo
+  p('#2fa84f', 12, 14, 26, 9); p('#1d7a37', 12, 21, 26, 2); p('#ffb347', 16, 19, 18, 3);
+  // cauda
+  for (let i = 0; i < 12; i++) p('#2fa84f', 12 - i, 16 + Math.round(Math.sin(i / 3) * 2), 2, 3);
+  p('#d8312f', 0, 15, 3, 3);
+  // cabeça
+  p('#2fa84f', 38, 10, 12, 9); p('#2fa84f', 46, 14, 6, 5); p('#ffffff', 44, 12, 3, 3); p('#111', 45, 13, 2, 2);
+  p('#1d7a37', 49, 17, 3, 1); p('#ffd23f', 40, 8, 2, 3); p('#ffd23f', 44, 7, 2, 4);
+  // asas
+  if (asa) { for (let i = 0; i < 10; i++) p('#58d27a', 18 + i, 4 + i, 12 - i, 1); p('#1d7a37', 18, 4, 1, 10); }
+  else { for (let i = 0; i < 9; i++) p('#58d27a', 18 + i, 22 + i, 12 - i, 1); }
+  // pernas
+  p('#1d7a37', 18, 23, 3, 3); p('#1d7a37', 30, 23, 3, 3);
+  return c;
+}
+function vulcao() {
+  const [c, p] = novo(110, 56);
+  for (let y = 0; y < 56; y++) {
+    const m = Math.round(12 + y * 0.9);
+    p(y < 4 ? '#3a1a10' : '#5a3424', 55 - m, y, m * 2, 1);
+    p('#7a4a34', 55 - m, y, 3, 1);
+  }
+  // lava escorrendo
+  for (const [x0, l] of [[50, 30], [58, 22], [46, 14]]) for (let y = 0; y < l; y++) p(y % 5 ? '#ff6a1a' : '#ffd23f', x0 + Math.round(Math.sin(y / 4) * 2), y, 2, 1);
+  p('#ff6a1a', 44, 0, 22, 2);
+  return c;
+}
+
+export function criarExtras() {
+  return {
+    posteE: poste(-1), posteD: poste(1),
+    cone: cone(), caminhao: caminhao(), bolaFogo: bolaFogo(),
+    chama: [chama(0), chama(1)], onda: onda(), dragao: [dragao(0), dragao(1)], vulcao: vulcao(),
+  };
 }
