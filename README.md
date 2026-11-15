@@ -7,7 +7,8 @@ e na tela só tem ACELERAR e TURBO.
 **Fase atual:** uma pista de praia; corrida de 3 voltas com amigos (salas com código de 4 letras)
 ou contra 5 adversários do computador; piloto = boneco do Forma Palavras;
 perigos malucos com aviso (lava de vulcão, fogo de dragão, caminhão tombado, onda gigante),
-clima sorteado (dia, fim de tarde, noite; chuva ou neve), 4 músicas e cor do carro à escolha.
+clima sorteado (dia, fim de tarde, noite; chuva ou neve), 8 pistas com temas (Praia, Rio, SP, Japão,
+Festival dos Tambores, Revolução das Máquinas, Floresta dos Vampiros, Festival da Lua), 8 músicas e cor do carro.
 
 Para testar no computador dá pra forçar coisas pelo endereço: `?clima=noite-chuva`,
 `?perigo=1` (primeiro perigo logo no começo), `?musica=0..3`, `?semente=abc` (sorteios repetíveis).

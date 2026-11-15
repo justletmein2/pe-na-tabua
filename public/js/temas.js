@@ -263,6 +263,104 @@ function drone(f) {
   return c;
 }
 
+// ---------- floresta dos vampiros ----------
+function pinheiro(sem) {
+  const r = aleatorio(sem);
+  const H = 64 + Math.floor(r() * 16);
+  const [c, p] = novo(34, H);
+  p('#4a3326', 15, H - 14, 4, 14);
+  for (let k = 0; k < 5; k++) {
+    const y0 = 2 + k * (H - 16) / 5, larg = 6 + k * 3;
+    for (let y = 0; y < (H - 16) / 5 + 4; y++) { const w = Math.round(larg * (y + 2) / ((H - 16) / 5 + 4)); p(k % 2 ? '#1e4a33' : '#24573c', 17 - w, y0 + y, w * 2, 1); p('#173a28', 17 + w - 2, y0 + y, 2, 1); }
+  }
+  for (let i = 0; i < 8; i++) p('rgba(200,220,210,.35)', 6 + r() * 22, 6 + r() * (H - 24), 2, 1);
+  return c;
+}
+function samambaia(sem) {
+  const r = aleatorio(sem);
+  const [c, p] = novo(26, 14);
+  for (let k = 0; k < 6; k++) { const a = -Math.PI * (0.15 + k * 0.14); for (let t = 0; t < 12; t++) p(t % 2 ? '#3f8a4c' : '#2f6b3a', 13 + Math.cos(a) * t, 13 + Math.sin(a) * t * 0.9, 2, 2); }
+  return c;
+}
+function casaVelha() {
+  const [c, p] = novo(56, 44);
+  for (let y = 0; y < 16; y++) p('#3a2a22', 28 - y * 1.7, y, y * 3.4, 1);
+  p('#5a4030', 4, 16, 48, 28); for (let y = 18; y < 44; y += 4) p('#4a3326', 4, y, 48, 1);
+  p('#ffe9a0', 12, 22, 8, 7); p('#ffe9a0', 36, 22, 8, 7); p('#2a1c16', 25, 30, 7, 14);
+  c.luz = { x: 0.3, y: 0.58, cor: 'rgba(255,220,140,A)' };
+  return c;
+}
+function lobo(f) {
+  // visto de trás, correndo: orelhas em pé, rabo peludo e patas alternando
+  const [c, p] = novo(26, 24);
+  const a = f ? 3 : 0, b = f ? 0 : 3;
+  p('#2a2c33', 5, 7, 16, 11); p('#5f6470', 6, 8, 14, 9); p('#8a909c', 8, 8, 10, 3);      // corpo
+  p('#2a2c33', 7, 0, 12, 8); p('#5f6470', 8, 1, 10, 6);                                   // cabeça
+  p('#2a2c33', 7, -1, 3, 4); p('#2a2c33', 16, -1, 3, 4); p('#d8a0a8', 8, 1, 1, 2); p('#d8a0a8', 17, 1, 1, 2); // orelhas
+  p('#2a2c33', 11, 10 - a, 4, 10); p('#9aa0ac', 12, 11 - a, 2, 7); p('#ffffff', 12, 17 - a, 2, 2);          // rabo
+  p('#2a2c33', 6, 17, 4, 7 - b); p('#2a2c33', 16, 17, 4, 7 - a); p('#2a2c33', 9, 17, 3, 6 - a); p('#2a2c33', 14, 17, 3, 6 - b); // patas
+  return c;
+}
+function florestaLonge() {
+  const H = 70;
+  const [c, p] = novo(512, H);
+  const r = aleatorio(77);
+  for (const [cor, alt, dens] of [['#6f8296', 46, 9], ['#4f6474', 34, 7], ['#2f4a3e', 22, 5]]) {
+    for (let x = 0; x < 512; x += dens) {
+      const h = alt - r() * 14, w = dens * 0.9;
+      for (let y = 0; y < h; y++) { const ww = Math.round(w * (y / h)); p(cor, x - ww + dens / 2, H - h + y, ww * 2 + 1, 1); }
+    }
+  }
+  return c;
+}
+
+// ---------- festival da lua ----------
+function lanternaCoelho(sem) {
+  const r = aleatorio(sem);
+  const [c, p] = novo(22, 30);
+  p('#6b4532', 10, 14, 2, 16);
+  p('#fff6ea', 4, 6, 14, 9); p('#fff6ea', 6, 4, 10, 2); p('#fff6ea', 6, 0, 3, 5); p('#fff6ea', 12, 0, 3, 5);
+  p('#ff9ac8', 7, 1, 1, 3); p('#ff9ac8', 13, 1, 1, 3); p('#d8312f', 13, 8, 2, 2); p('#ffd23f', 4, 13, 14, 2);
+  if (r() < 0.5) p('#ffb347', 2, 10, 2, 2);
+  c.luz = { x: 0.5, y: 0.3, cor: 'rgba(255,230,180,A)' };
+  return c;
+}
+function osmanto(sem) {
+  const r = aleatorio(sem);
+  const [c, p] = novo(40, 52);
+  p('#5a3a2a', 18, 26, 4, 26);
+  for (let i = 0; i < 80; i++) { const a = r() * Math.PI * 2, d = Math.sqrt(r()) * 17; p(r() < 0.2 ? '#ffc94d' : r() < 0.5 ? '#2f7a3e' : '#3c9450', 20 + Math.cos(a) * d - 2, 18 + Math.sin(a) * d * 0.8 - 2, 3, 3); }
+  return c;
+}
+function barracaLua(sem) {
+  const r = aleatorio(sem);
+  const [c, p] = novo(50, 42);
+  for (let x = 0; x < 50; x += 6) p(Math.floor(x / 6) % 2 ? '#ffc94d' : '#c41e1e', x, 0, 6, 8);
+  p('#6b2a1a', 2, 8, 3, 34); p('#6b2a1a', 45, 8, 3, 34); p('#8a2a1a', 0, 26, 50, 16); p('#c9a227', 0, 26, 50, 2);
+  for (let k = 0; k < 4; k++) { p('#c98a3a', 6 + k * 10, 20, 8, 6); p('#e8b45a', 7 + k * 10, 21, 6, 2); }
+  p('#ff3b30', 22, 9, 6, 8); p('#ffd23f', 24, 11, 2, 4);
+  c.luz = { x: 0.5, y: 0.3, cor: 'rgba(255,140,80,A)' };
+  return c;
+}
+function lanternasVermelhas(lado) {
+  const [c, p] = novo(18, 60);
+  const x = lado < 0 ? 3 : 13;
+  p('#6b2a1a', x, 6, 2, 54); p('#6b2a1a', lado < 0 ? x : x - 10, 6, 12, 2);
+  const lx = lado < 0 ? x + 6 : x - 8;
+  p('#c41e1e', lx, 8, 8, 10); p('#ff4a3a', lx + 1, 9, 6, 8); p('#ffc94d', lx + 2, 18, 4, 3); p('#ffc94d', lx + 2, 7, 4, 1);
+  c.luz = { x: (lx + 4) / 18, y: 13 / 60, cor: 'rgba(255,90,60,A)' };
+  return c;
+}
+function cidadeLua() {
+  const H = 64;
+  const [c, p] = novo(512, H);
+  const r = aleatorio(8);
+  for (let x = 0; x < 512; x++) { const t = Math.round(H - 24 - 10 * Math.sin(x / 60) - 5 * Math.sin(x / 19)); p('#1e2440', x, t, 1, H - t); }
+  for (const cx of [90, 260, 420]) for (let k = 0; k < 4; k++) { const w = 26 - k * 5, y = 6 + k * 9; p('#141826', cx - w / 2 - 2, y, w + 4, 3); p('#5a1414', cx - w / 2 + 2, y + 3, w - 4, 6); p('#ffc94d', cx - 1, y + 4, 2, 3); }
+  for (let i = 0; i < 60; i++) p(r() < 0.5 ? '#ffc94d' : '#ff6a3a', r() * 512, H - 4 - r() * 18, 2, 2);
+  return c;
+}
+
 // ---------- o catálogo de temas ----------
 function mar() { return criarFundo(108).mar; }
 
@@ -328,14 +426,38 @@ export function tema(id) {
       beira: [{ tipo: ['ruina1', 'ruina2'], cada: 6, min: 2.6, max: 4 }, { tipo: ['robo1', 'robo2'], cada: 9, min: 1.35, max: 2.2 }, { tipo: 'carcaca', cada: 17, min: 1.4, max: 2.4 }, { tipo: 'torre', cada: 31, min: 1.6, max: 2.5 }, { tipo: 'telao', cada: 47, min: 1.5 }],
       perigos: ['fogo', 'lava', 'caminhao'], skins: { fogo: { nome: 'LASER DE DRONE!', icone: '🛸', voador: 'drone', chama: 'laser' }, lava: { nome: 'METAL DERRETIDO!', icone: '🔥' }, caminhao: { nome: 'TANQUE-ROBÔ CAÍDO!', icone: '🤖' } }, musicas: [5],
     },
+    vampiros: {
+      nome: 'Floresta dos Vampiros', icone: '🧛',
+      cores: { ceuTopo: '#7d8ea3', ceuBaixo: '#dfe6ec', claro: { estrada: '#5d6066', chao: '#3f6b48', zebra: '#e9eef5', faixa: '#e9eef5' }, escuro: { estrada: '#575a60', chao: '#38613f', zebra: '#3a3a44', faixa: null } },
+      fundo: { ceu: f.nuvens, longe: florestaLonge(), faixa: null }, neblina: true, lobos: true, brilho: true,
+      sprites: { pinheiro1: { img: pinheiro(1), mundo: 1, bate: 0.25 }, pinheiro2: { img: pinheiro(2), mundo: 1.15, bate: 0.25 }, pinheiro3: { img: pinheiro(3), mundo: 0.9, bate: 0.25 },
+        samambaia: { img: samambaia(4), mundo: 0.5, bate: 0 }, casa: { img: casaVelha(), mundo: 1.4, bate: 0.9 } },
+      beira: [{ tipo: ['pinheiro1', 'pinheiro2', 'pinheiro3'], cada: 3, lado: -1, min: 1.4, max: 4.5 }, { tipo: ['pinheiro1', 'pinheiro2', 'pinheiro3'], cada: 3, lado: 1, min: 1.4, max: 4.5, desde: 1 },
+        { tipo: 'samambaia', cada: 4, min: 1.15, max: 1.8 }, { tipo: 'pedra', cada: 23, min: 1.3, max: 2.2 }, { tipo: 'casa', cada: 220, min: 2.4 }],
+      perigos: ['caminhao', 'onda', 'fogo'], skins: { onda: { nome: 'ENXURRADA!', icone: '🌊' }, fogo: { nome: 'MORCEGÃO GIGANTE!', icone: '🦇' }, caminhao: { nome: 'ÁRVORE CAÍDA!', icone: '🌲' } },
+      musicas: [1, 5], chuvaExtra: 0.45,
+      nomesNpc: ['Conde Zezinho', 'Vampirinha Lu', 'Dona Morcega', 'Edu Pálido', 'Bia Caninos'],
+    },
+    lua: {
+      nome: 'Festival da Lua', icone: '🥮',
+      cores: { ceuTopo: '#0e1030', ceuBaixo: '#2c2a6a', claro: { estrada: '#4e4a58', chao: '#2f3a4a', zebra: '#ffc94d', faixa: '#ffc94d' }, escuro: { estrada: '#48445a', chao: '#2a3442', zebra: '#c41e1e', faixa: null } },
+      fundo: { ceu: null, longe: cidadeLua(), faixa: null }, noite: true, lua: true, lanternasCeu: true,
+      sprites: { coelho1: { img: lanternaCoelho(1), mundo: 0.38, bate: 0.6 }, coelho2: { img: lanternaCoelho(2), mundo: 0.34, bate: 0.6 }, osmanto1: { img: osmanto(1), mundo: 1, bate: 0.2 }, osmanto2: { img: osmanto(3), mundo: 0.9, bate: 0.2 },
+        barraca1: { img: barracaLua(1), mundo: 1.1, bate: 0.9 }, barraca2: { img: barracaLua(2), mundo: 1.1, bate: 0.9 }, lantE: { img: lanternasVermelhas(-1), mundo: 0.34, bate: 0.25 }, lantD: { img: lanternasVermelhas(1), mundo: 0.34, bate: 0.25 }, pagode: { img: pagode(), mundo: 1.3, bate: 0.9 } },
+      beira: [{ tipo: 'lantE', cada: 8, lado: -1, min: 1.2 }, { tipo: 'lantD', cada: 8, lado: 1, min: 1.2, desde: 4 }, { tipo: ['coelho1', 'coelho2'], cada: 5, min: 1.5, max: 2.4 },
+        { tipo: ['osmanto1', 'osmanto2'], cada: 6, min: 2.4, max: 4.5 }, { tipo: ['barraca1', 'barraca2'], cada: 14, min: 2.6, max: 3.8 }, { tipo: 'pagode', cada: 180, min: 3 }],
+      perigos: ['fogo', 'caminhao', 'onda'], skins: { fogo: { nome: 'DRAGÃO DA LUA!', icone: '🐉' }, caminhao: { nome: 'CARROÇA DE BOLO-LUA TOMBADA!', icone: '🥮' }, onda: { nome: 'ONDA DO RIO!', icone: '🌊' } },
+      musicas: [7],
+    },
   }[id] || null;
   if (!T) return tema('praia');
   T.id = id;
   T.sprites = { ...base, ...T.sprites, arco: { img: arco(id === 'ia' ? '#ff2a2a' : '#ffd23f', id === 'ia' ? '#222' : '#d8312f'), mundo: 2.6, bate: 0 } };
   T.drone = [drone(0), drone(1)];
+  T.lobo = [lobo(0), lobo(1)];
   cache[id] = T;
   return T;
 }
 
-export const PISTAS = ['praia', 'rio', 'sp', 'japao', 'festival', 'ia'];
-export const nomePista = id => ({ praia: '🏖️ Praia', rio: '🌴 Rio de Janeiro', sp: '🏙️ São Paulo', japao: '🗻 Japão', festival: '🥁 Festival dos Tambores', ia: '🤖 Revolução das Máquinas' }[id] || id);
+export const PISTAS = ['praia', 'rio', 'sp', 'japao', 'festival', 'ia', 'vampiros', 'lua'];
+export const nomePista = id => ({ praia: '🏖️ Praia', rio: '🌴 Rio de Janeiro', sp: '🏙️ São Paulo', japao: '🗻 Japão', festival: '🥁 Festival dos Tambores', ia: '🤖 Revolução das Máquinas', vampiros: '🧛 Floresta dos Vampiros', lua: '🥮 Festival da Lua' }[id] || id);

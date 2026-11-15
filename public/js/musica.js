@@ -122,6 +122,17 @@ export const MUSICAS = [
     },
     ordem: ['intro', 'A', 'A', 'B', 'A'],
   },
+  {
+    nome: 'Lua Cheia', bpm: 126, baixo: 'swing',
+    bateria: { k: 'x.....x...x.....', s: '....x.......x...', h: 'x.x.x.x.x.x.x.x.' },
+    secoes: {
+      A: { acordes: ['C', 'Am', 'F', 'G'], lead: [
+        'G5:2 A5:2 C6:4 D6:2 C6:2 A5:4', 'E5:2 G5:2 A5:4 C6:4 A5:4', 'A5:2 C6:2 D6:4 E6:2 D6:2 C6:4', 'D6:4 C6:2 A5:2 G5:8'] },
+      B: { acordes: ['F', 'G', 'Em', 'Am'], arpejo: true, lead: [
+        'C6:4 D6:4 E6:4 G6:4', 'A6:4 G6:2 E6:2 D6:8', 'E6:2 D6:2 C6:2 A5:2 G5:4 A5:4', 'A5:12 r:4'] },
+    },
+    ordem: ['intro', 'A', 'A', 'B', 'A'],
+  },
 ];
 
 // transforma a música numa lista de compassos

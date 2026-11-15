@@ -124,6 +124,21 @@ const LAYOUTS = {
       .curva(80, -1.2);
     T.fechar();
   },
+  vampiros(T) {
+    // estrada de floresta: curvas fechadas, subidas na neblina, ponte (rampa) sobre o rio
+    T.reta(60).curva(80, 2, 20).curva(80, -2.4, 10).trecho(30, 40, 30, 0, -30).turbo(0).curva(100, 1.6)
+      .rampa().curva(70, -2.8, 20).curva(70, 2.8, -20).reta(50).loop().curva(120, -1.8, 30)
+      .trecho(20, 20, 20, 0, -15).trecho(20, 20, 20, 0, -15).turbo(-0.5).curva(90, 2.6).curva(60, -1.2).rampa()
+      .curva(80, -2.2).curva(80, 2.2);
+    T.fechar();
+  },
+  lua(T) {
+    // margens de rio com pontes em arco (rampas) e lanternas
+    T.reta(60).turbo(0).curva(100, -1.6).trecho(25, 25, 25, 0, 15).trecho(25, 25, 25, 0, -15).rampa()
+      .curva(90, 2.4).curva(90, -2.4).turbo(0.5).turbo(-0.5).loop().curva(140, 1.4, 20).trecho(30, 40, 30, 0, -20)
+      .rampa().curva(70, -3).reta(40).curva(70, 3).turbo(0).curva(120, -1.2).curva(60, 2);
+    T.fechar();
+  },
   ia(T) {
     // cidade destruída: zigue-zague, buracos (rampas) e um loop dentro da fábrica
     T.reta(60).curva(60, -2.6).curva(60, 2.6).rampa().curva(80, 1.6, -10).turbo(0).reta(60, 20)

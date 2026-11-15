@@ -52,7 +52,25 @@ function carregarPista(id) {
   perigos = new Perigos(segs, EXTRAS, TEMA);
   minimapa = new Minimapa($('minimapa'), segs);
   pistaAtual = id; gradCache = null;
+  prepararNpcsTema();
 }
+// bonecos dos adversários de acordo com o tema (ex.: vampirinhos na floresta)
+function lookVampiro(r) {
+  const AV = boneco.av(); if (!AV) return null;
+  if (r() < 0.35) return { ...AV.lookPadrao(), tipo: 'morcego', corRoupa: 'preto' };
+  const um = a => a[Math.floor(r() * a.length)];
+  return { ...AV.lookPadrao(), tipo: 'pessoa', pele: 'p1', cabelo: um(['curto', 'longo', 'topete', 'franja', 'lado', 'espetado']), corCabelo: r() < 0.75 ? 'preto' : 'castanho',
+    roupa: r() < 0.7 ? 'heroi' : 'smoking', corRoupa: 'preto', olhos: 'normal', boca: 'dentuco', barba: 'nada', chapeu: 'nada', acessorio: 'nada' };
+}
+function prepararNpcsTema() {
+  if (!TEMA || TEMA._looks || !boneco.av() || TEMA.id !== 'vampiros') return;
+  const r = Math.random;
+  TEMA._looks = [0, 1, 2, 3, 4].map(() => lookVampiro(r));
+  Promise.all(TEMA._looks.map(l => boneco.cabecas(l))).then(c => { TEMA._cabecas = c; });
+}
+const looksNpc = () => (TEMA && TEMA._looks) || npcLooks;
+const cabecasDoTema = () => (TEMA && TEMA._cabecas) || cabecasNpc;
+const infoNomes = () => (TEMA && TEMA.nomesNpc ? TEMA.nomesNpc.map(nome => ({ nome })) : null);
 let rand = Math.random;
 
 let W = 384, H = 216, CW = 384, CH = 216, MX = 0, MY = 0, ESC_CSS = 1;
@@ -194,6 +212,7 @@ function desenhar(dt) {
   g.fillStyle = gradCache.gr; g.fillRect(-MX - 8, -MY - 8, CW + 16, hz + MY + 8);
   if (clima.hora === 'dia' && clima.tempo === 'limpo') { g.fillStyle = '#fff6b0'; g.fillRect(W - 70, 18, 22, 22); g.fillStyle = '#ffffff'; g.fillRect(W - 66, 22, 14, 14); }
   if (clima.hora === 'tarde' && clima.tempo === 'limpo') { g.fillStyle = '#ff7a3a'; g.fillRect(W - 90, hz - 40, 30, 30); g.fillStyle = '#ffc070'; g.fillRect(W - 86, hz - 36, 22, 22); }
+  if (TEMA.lua) luaCheia(hz);
   if (TEMA.fogos) fogosArtificio(hz);
   if (fundo.ceu && (clima.tempo !== 'chuva' || clima.intens < 0.5)) camadaFundo(fundo.ceu, E.ceu, 0);
   perigos.fundo(g, W, H, E.t);
@@ -219,11 +238,16 @@ function desenhar(dt) {
     limite = Math.min(limite, s.p2.tela.y);
   }
 
+  if (TEMA.neblina) neblina(hz);   // neblina atrás dos objetos (eles aparecem por cima dela)
   // objetos que se mexem: adversários e perigos, agrupados por fatia
   const dinamicos = new Map();
   const juntar = o => { const i = ((o.i % N) + N) % N; if (!dinamicos.has(i)) dinamicos.set(i, []); dinamicos.get(i).push(o); };
   for (const o of perigos.objetos(E.t)) juntar(o);
   const lc = largCarro();
+  if (TEMA.lobos && E.lobos) for (const l of E.lobos) {
+    const z = l.dist + Z_JOG, p = ((z % COMPR) + COMPR) % COMPR;
+    juntar({ i: Math.floor(p / SEG), pct: (p % SEG) / SEG, x: l.x, img: TEMA.lobo[Math.floor(l.fase * 8) % 2], mundo: 0.24, alt: 0 });
+  }
   for (const n of carros()) {
     if (n.oculto) continue;
     const z = n.dist + Z_JOG, p = ((z % COMPR) + COMPR) % COMPR;
@@ -268,6 +292,7 @@ function desenhar(dt) {
         if (o.espelhar) { g.translate(Math.round(sx + dw), 0); g.scale(-1, 1); g.drawImage(o.img, 0, Math.round(sy), Math.round(dw), Math.round(dh)); }
         else g.drawImage(o.img, Math.round(sx), Math.round(sy), Math.round(dw), Math.round(dh));
         g.restore();
+        if (o.npc && TEMA.brilho && clima.tempo === 'limpo' && clima.hora !== 'noite') brilhar(sx + dw * 0.18, sy, dw * 0.3, dh * 0.4);
         if (o.npc) { const ly = sy + dh * 25.5 / 44; luzes.push([sx + dw * 9 / 56, ly, dw * 0.16, 'rgba(255,40,30,A)'], [sx + dw * 47 / 56, ly, dw * 0.16, 'rgba(255,40,30,A)']); }
         if (o.luz) luzes.push([sx + dw / 2, sy + dh / 2, dw * 0.7, o.luz]);
       }
@@ -278,7 +303,9 @@ function desenhar(dt) {
 
   // hora do dia, luzes, chuva/neve
   clima.pintar(g, -MX - 8, -MY - 8, CW + 16, CH + 16);
-  clima.estrelasELua(g, W, -MX, -MY, CW, hz - 40);
+  clima.estrelasELua(g, W, -MX, -MY, CW, hz - 40, !!TEMA.lua);
+  if (TEMA.lua) { g.save(); g.globalCompositeOperation = 'lighter'; g.globalAlpha = 0.75; luaCheia(hz, true); g.restore(); }
+  if (TEMA.lanternasCeu) lanternasNoCeu(hz);
   clima.farois(g, W, H, H - CARRO_H * escalaCarro());
   clima.acender(g, luzes);
   clima.particulasDesenhar(g, -MX, -MY, CW, CH, dt);
@@ -286,6 +313,39 @@ function desenhar(dt) {
   linhasVelocidade();
 }
 
+// vampirinho no sol: a pele brilha (pontinhos piscando na cabeça)
+function brilhar(x, y, w, h) {
+  for (let k = 0; k < 4; k++) {
+    if (Math.random() < 0.4) continue;
+    const px = Math.round(x + Math.random() * w), py = Math.round(y + Math.random() * h), t = Math.max(1, Math.round(w / 14));
+    g.fillStyle = k % 2 ? '#ffffff' : '#bff4ff';
+    g.fillRect(px - t, py, t * 3, t); g.fillRect(px, py - t, t, t * 3);
+  }
+}
+// neblina perto do horizonte
+let gradNeblina = null;
+function neblina(hz) {
+  if (!gradNeblina || gradNeblina.hz !== hz) { const gr = g.createLinearGradient(0, hz - 30, 0, hz + 40); gr.addColorStop(0, 'rgba(225,232,238,0)'); gr.addColorStop(0.45, 'rgba(225,232,238,.75)'); gr.addColorStop(1, 'rgba(225,232,238,0)'); gradNeblina = { hz, gr }; }
+  g.fillStyle = gradNeblina.gr; g.fillRect(-MX, hz - 30, CW, 70);
+}
+// lua cheia enorme
+function luaCheia(hz, soDisco) {
+  const cx = W * 0.72, cy = hz * 0.42, r = hz * 0.3;
+  if (soDisco) { g.fillStyle = '#c9b88a'; g.beginPath(); g.arc(cx, cy, r, 0, Math.PI * 2); g.fill(); return; }
+  const gr = g.createRadialGradient(cx, cy, r * 0.8, cx, cy, r * 2);
+  gr.addColorStop(0, 'rgba(255,240,190,.35)'); gr.addColorStop(1, 'rgba(255,240,190,0)');
+  g.fillStyle = gr; g.fillRect(cx - r * 2, cy - r * 2, r * 4, r * 4);
+  g.fillStyle = '#fff3c8'; g.beginPath(); g.arc(cx, cy, r, 0, Math.PI * 2); g.fill();
+  g.fillStyle = '#ecdca8'; for (const [dx, dy, rr] of [[-0.3, -0.2, 0.18], [0.25, 0.1, 0.22], [-0.05, 0.4, 0.12], [0.35, -0.35, 0.1]]) { g.beginPath(); g.arc(cx + dx * r, cy + dy * r, rr * r, 0, Math.PI * 2); g.fill(); }
+}
+// lanternas de papel subindo no céu
+function lanternasNoCeu(hz) {
+  for (let i = 0; i < 18; i++) {
+    const ciclo = (E.t * 0.04 + i * 0.137) % 1;
+    const x = ((i * 113.7 + Math.sin(E.t * 0.5 + i) * 6) % (W + 2 * MX)) - MX, y = hz - ciclo * (hz + MY);
+    g.fillStyle = '#ff9a3a'; g.fillRect(Math.round(x), Math.round(y), 3, 4); g.fillStyle = '#ffe9a0'; g.fillRect(Math.round(x) + 1, Math.round(y) + 1, 1, 2);
+  }
+}
 // fogos de artifício no céu do festival
 const fogos = [];
 function fogosArtificio(hz) {
@@ -501,6 +561,7 @@ function atualizar(dt) {
       E.tremor = 0.5; som.batida(); reclamar('carro');
     }
   }
+  atualizarLobos(dt, dj, correndo, noAr, lc);
   E.x = Math.max(-3, Math.min(3, E.x));
 
   // turbo: enche quando fica na pista sem bater
@@ -533,6 +594,41 @@ function atualizar(dt) {
   E.morros += 0.0009 * jSeg.curva * pct;
   E.roda += E.vel * dt / 300;
   som.motor(Math.min(1.3, pct), acel, turboAtivo);
+}
+
+function atualizarLobos(dt, dj, correndo, noAr, lc) {
+  if (!TEMA.lobos) return;
+  E.lobos = E.lobos || [];
+  if (correndo && E.tempo > E.proxLobos) {
+    E.proxLobos = E.tempo + 7 + Math.random() * 6;
+    const n = 3 + Math.floor(Math.random() * 3), base = dj + 90 * SEG;
+    for (let k = 0; k < n; k++) {
+      const fora = Math.random() < 0.45;
+      E.lobos.push({ dist: base + k * 260 + Math.random() * 300, x: fora ? (Math.random() < 0.5 ? -1 : 1) * (1.4 + Math.random() * 2) : (Math.random() * 1.6 - 0.8),
+        fase: Math.random() * 6, vel: V_MAX * (0.42 + Math.random() * 0.12), fora });
+    }
+    uivo();
+  }
+  for (const l of E.lobos) {
+    l.dist += l.vel * dt; l.fase += dt;
+    if (!l.fora) l.x += Math.sin(l.fase * 2.2) * dt * 0.6;
+    if (l.pulou) l.x += l.pulou * dt * 2.5;
+    // encostou num lobo: susto e perde velocidade (o lobo pula pro lado)
+    if (!l.fora && !noAr && E.girando <= 0 && Math.abs(l.dist - dj) < 230 && Math.abs(l.x - E.x) < lc * 0.8) {
+      E.vel *= 0.6; E.tremor = 0.7; som.batida(); l.fora = true; l.pulou = l.x > E.x ? 1 : -1;
+      reclamar(null, ['Sai da frente, lobo!', 'Tem lobo na pista!', 'Auuuu!', 'Que bicho peludo!']);
+    }
+  }
+  E.lobos = E.lobos.filter(l => l.dist > dj - 30 * SEG && l.dist < dj + 300 * SEG && Math.abs(l.x) < 6);
+}
+function uivo() {
+  const ac = som.contexto(); if (!ac || !som.somLigado()) return;
+  const o = ac.createOscillator(), g = ac.createGain(), v = ac.createOscillator(), vg = ac.createGain();
+  const t = ac.currentTime;
+  o.type = 'sine'; o.frequency.setValueAtTime(320, t); o.frequency.linearRampToValueAtTime(620, t + 0.5); o.frequency.linearRampToValueAtTime(480, t + 1.4);
+  v.frequency.value = 6; vg.gain.value = 12; v.connect(vg); vg.connect(o.frequency);
+  g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(0.12, t + 0.2); g.gain.linearRampToValueAtTime(0, t + 1.5);
+  o.connect(g); g.connect(ac.destination); o.start(t); v.start(t); o.stop(t + 1.6); v.stop(t + 1.6);
 }
 
 function usarTurbo() {
@@ -725,13 +821,14 @@ function climaDaPista(c, r = Math.random) {
   if (TEMA.noite) c.hora = 'noite';
   if (TEMA.id === 'ia') { c.hora = 'dia'; if (c.tempo === 'neve') c.tempo = 'limpo'; }
   if (TEMA.chuvaExtra && c.tempo === 'limpo' && r() < TEMA.chuvaExtra) c.tempo = 'chuva';
-  if ((TEMA.id === 'rio' || TEMA.id === 'festival') && c.tempo === 'neve' && r() < 0.7) c.tempo = 'limpo';
+  if ((TEMA.id === 'rio' || TEMA.id === 'festival' || TEMA.id === 'lua') && c.tempo === 'neve' && r() < 0.7) c.tempo = 'limpo';
+  if (TEMA.id === 'vampiros' && c.hora === 'noite' && r() < 0.6) c.hora = 'dia';
   return c;
 }
 function musicaDaPista(c, r = Math.random) {
   const lista = TEMA.musicas;
   if (r() < 0.8) return lista[Math.floor(r() * lista.length)];
-  return Math.floor(r() * 7);
+  return Math.floor(r() * 8);
 }
 function zerarCorrida() {
   Object.assign(E, { ar: null, loop: null, loopAng: 0, padAte: 0, vacuo: false, ajudaK: 0 });
@@ -744,8 +841,9 @@ function novaCorrida() {
   zerarCorrida();
   carregarPista(pref.pista);
   perigos.aoCriar = null;
-  E.online = false; E.remotos = []; E.bots = [];
-  E.npcs = criarNpcs(pref.cor, rand, COMPR, SEG, cabecasNpc);
+  E.online = false; E.remotos = []; E.bots = []; E.lobos = [];
+  E.npcs = criarNpcs(pref.cor, rand, COMPR, SEG, cabecasDoTema(), infoNomes());
+  E.lobos = []; E.proxLobos = 6;
   E.posicao = E.npcs.length + 1;
   perigos.reiniciar();
   // clima: sorteado (ou forçado pelo endereço, pra teste: ?clima=noite-chuva)
@@ -786,7 +884,7 @@ function terminar() {
   const lista = [{ nome: PERFIL.tag || 'Você', tempo: E.tempo, eu: true, cor: pref.cor, look: PERFIL.look }];
   E.npcs.forEach((n, k) => {
     const tempo = n.terminou != null ? n.terminou : E.tempo + Math.max(0, VOLTAS * COMPR - n.dist) / Math.max(n.vel, V_MAX * 0.6);
-    lista.push({ nome: n.nome, tempo, cor: n.cor, look: npcLooks[k] });
+    lista.push({ nome: n.nome, tempo, cor: n.cor, look: looksNpc()[k] });
   });
   lista.sort((a, b) => a.tempo - b.tempo);
   const minha = lista.findIndex(l => l.eu) + 1;
@@ -906,6 +1004,7 @@ async function carregarPerfil() {
   if (boneco.av()) {
     npcLooks = [0, 1, 2, 3, 4].map(() => boneco.lookAleatorio());
     cabecasNpc = await Promise.all(npcLooks.map(l => boneco.cabecas(l)));
+    prepararNpcsTema();
   }
   await atualizarCabeca(); desenharPiloto();
   try {
@@ -1096,7 +1195,8 @@ $('btnComecar').onclick = async () => {
     // carros do computador: nomes, cores (diferentes das dos amigos) e bonecos
     const usadas = Object.values(M.players).filter(p => p.online).map(p => p.cor);
     const livres = CORES_CARRO.filter(k => !usadas.includes(k.id));
-    const botsInfo = Array.from({ length: M.meta.bots ?? 3 }, (_, j) => ({ nome: PILOTOS[j].nome, cor: (livres[j] || CORES_CARRO[j]).id, look: npcLooks[j] || null }));
+    const nomes = TEMA.nomesNpc || PILOTOS.map(p => p.nome);
+    const botsInfo = Array.from({ length: M.meta.bots ?? 3 }, (_, j) => ({ nome: nomes[j], cor: (livres[j] || CORES_CARRO[j]).id, look: looksNpc()[j] || null }));
     await rede.atualizarMeta(M.code, { pista, botsInfo, ajuda: M.meta.ajuda !== false, status: 'contagem', rodada: ((M.meta && M.meta.rodada) || 0) + 1, inicio: rede.agora() + 6000, clima: c, musica: mus, semente: Math.random().toString(36).slice(2, 8) });
   } catch (e) { toast('Não deu pra começar: ' + (e.message || e), 3000); }
   finally { $('btnComecar').disabled = false; }
@@ -1108,7 +1208,7 @@ function iniciarOnline(meta) {
   rand = aleatorio(sementeDe(meta.semente || 'x'));
   zerarCorrida();
   carregarPista(meta.pista || 'praia');
-  E.online = true; E.npcs = []; E.bots = []; E.ajuda = meta.ajuda !== false;
+  E.online = true; E.npcs = []; E.bots = []; E.ajuda = meta.ajuda !== false; E.lobos = []; E.proxLobos = 6;
   M.perigosVistos = new Set(); M.calibrado = false; M.xpDado = false; M.enviadoEm = 0; M.botsEm = 0;
   perigos.reiniciar();
   perigos.proximo = 1e9;
@@ -1129,7 +1229,7 @@ function iniciarOnline(meta) {
   E.x = lugar(k).x; E.pos = lugar(k).d;
   const info = meta.botsInfo || [];
   if (M.host) {
-    E.npcs = criarNpcs(pref.cor, rand, COMPR, SEG, info.map((b, i) => cabecasNpc[i] || null), info);
+    E.npcs = criarNpcs(pref.cor, rand, COMPR, SEG, info.map((b, i) => cabecasDoTema()[i] || null), info);
     E.npcs.forEach((n, j) => { const L = lugar(ids.length + j); n.dist = L.d; n.x = n.alvoX = L.x; });
     E.bots = E.npcs;
   } else E.bots = info.map((b, j) => ({ uid: null, botId: 'b' + j, nome: b.nome, cor: b.cor, look: b.look, dist: lugar(ids.length + j).d, x: lugar(ids.length + j).x, virar: 0, oculto: true, terminou: null, imgs: null }));

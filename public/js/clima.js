@@ -68,9 +68,10 @@ export class Clima {
     g.restore();
   }
   // estrelas só na parte de cima do céu (x0,y0,w = área do canvas; teto = até onde vão)
-  estrelasELua(g, W, x0, y0, w, teto) {
+  estrelasELua(g, W, x0, y0, w, teto, semLua) {
     if (this.hora !== 'noite' || this.tempo !== 'limpo') return;
     for (const e of this.estrelas) { g.fillStyle = e.b > 0.7 ? '#ffffff' : '#9fb0ff'; g.fillRect(Math.round(x0 + e.fx * w), Math.round(y0 + e.fy * (teto - y0)), 1, 1); }
+    if (semLua) return;
     g.fillStyle = '#fffbe0'; g.fillRect(W - 64, 16, 16, 16); g.fillStyle = '#c9c6a8'; g.fillRect(W - 60, 20, 3, 3); g.fillRect(W - 54, 26, 2, 2);
   }
   // luzes: lista de [x, y, raio, cor]
