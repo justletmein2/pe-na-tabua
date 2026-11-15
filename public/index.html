@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#1b1440">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<title>Pé na Tábua</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="palco">
+  <canvas id="tela"></canvas>
+
+  <!-- painel durante a corrida -->
+  <div id="hud" hidden>
+    <div id="hudEsq">
+      <div><span class="rot">VOLTA</span> <b id="hudVolta">1/3</b></div>
+      <div><span class="rot">TEMPO</span> <b id="hudTempo">0:00.0</b></div>
+      <div><span class="rot">MELHOR</span> <b id="hudMelhor">–</b></div>
+    </div>
+    <div id="hudCentro">
+      <button id="btnPausa" aria-label="Ajustes">⚙</button>
+      <div id="indicador"><div id="ponteiro"></div></div>
+    </div>
+    <div id="hudDir"><b id="hudVel">0</b><span class="rot">km/h</span></div>
+    <div id="balao" hidden></div>
+    <div id="contagem" hidden></div>
+  </div>
+
+  <div id="controles" hidden>
+    <button id="btnTurbo" class="btnJogo"><span>TURBO</span><div id="barraTurbo"><i id="barraTurboCheia"></i></div></button>
+    <button id="btnAcel" class="btnJogo"><span>ACELERAR</span></button>
+  </div>
+
+  <!-- telas -->
+  <section id="telaInicio" class="tela">
+    <div class="caixa">
+      <h1>PÉ NA TÁBUA</h1>
+      <p class="sub">Teste do volante · pista da praia</p>
+      <p id="txtInicio">Segure o celular deitado, como um volante. Para virar, gire o celular.</p>
+      <button id="btnLigar" class="grande">Ligar volante</button>
+      <button id="btnTeclado" class="grande" hidden>Jogar com teclado</button>
+      <p id="dicaTeclado" class="peq" hidden>← → viram · ↑ (ou Z) acelera · Espaço (ou X) turbo</p>
+    </div>
+  </section>
+
+  <section id="telaAviso" class="tela" hidden>
+    <div class="caixa">
+      <h2 id="avisoTitulo"></h2>
+      <p id="avisoTxt"></p>
+      <button id="btnAvisoCopiar" class="grande" hidden>Copiar link</button>
+      <button id="btnAvisoChrome" class="grande" hidden>Abrir no Chrome</button>
+      <button id="btnAvisoTentar" class="sec">Tentar mesmo assim</button>
+    </div>
+  </section>
+
+  <section id="telaGire" class="tela" hidden>
+    <div class="caixa">
+      <div class="icone">📱↪️</div>
+      <h2>Deite o celular</h2>
+      <p id="txtGire">Segure o celular na horizontal, como um volante.</p>
+    </div>
+  </section>
+
+  <section id="telaCalibra" class="tela" hidden>
+    <div class="caixa">
+      <h2>Calibrar o volante</h2>
+      <p>Segure o celular <b>na posição em que vai jogar</b>, com as rodas "retas", e toque em <b>Pronto</b>.</p>
+      <div id="calibVolante"><div id="calibPonteiro"></div></div>
+      <button id="btnPronto" class="grande">Pronto</button>
+    </div>
+  </section>
+
+  <section id="telaAjustes" class="tela" hidden>
+    <div class="caixa larga">
+      <h2>Ajustes do volante</h2>
+      <div id="previa"><div id="previaPonteiro"></div><span id="previaTxt"></span></div>
+      <label>Quanto girar para virar tudo: <b id="vAngulo"></b>
+        <input type="range" id="cfgAngulo" min="8" max="45" step="1">
+        <small>Menor = mais sensível</small></label>
+      <label>Folga no meio: <b id="vMorta"></b>
+        <input type="range" id="cfgMorta" min="0" max="8" step="0.5">
+        <small>Ignora tremidinhas perto do reto</small></label>
+      <label>Suavidade: <b id="vSuave"></b>
+        <input type="range" id="cfgSuave" min="0" max="0.9" step="0.05">
+        <small>Maior = menos tremido, mas responde mais devagar</small></label>
+      <label>Precisão no centro: <b id="vCentro"></b>
+        <input type="range" id="cfgCentro" min="1" max="2.5" step="0.1">
+        <small>Maior = curvas leves mais fáceis, viradas fortes iguais</small></label>
+      <label class="linha"><input type="checkbox" id="cfgInverter"> Inverter direção</label>
+      <label class="linha"><input type="checkbox" id="cfgSom"> Som ligado</label>
+      <div class="botoes">
+        <button id="btnRecalibrar" class="sec">Recalibrar</button>
+        <button id="btnPadrao" class="sec">Voltar ao padrão</button>
+        <button id="btnCopiarAjustes" class="sec">Copiar ajustes</button>
+      </div>
+      <div class="botoes">
+        <button id="btnReiniciar" class="sec">Recomeçar corrida</button>
+        <button id="btnContinuar" class="grande">Continuar</button>
+      </div>
+    </div>
+  </section>
+
+  <section id="telaFim" class="tela" hidden>
+    <div class="caixa">
+      <h2>🏁 Fim!</h2>
+      <p>Tempo total: <b id="fimTempo"></b></p>
+      <p>Volta mais rápida: <b id="fimMelhor"></b></p>
+      <p id="fimVoltas" class="peq"></p>
+      <button id="btnDeNovo" class="grande">Correr de novo</button>
+      <button id="btnFimAjustes" class="sec">Ajustar volante</button>
+    </div>
+  </section>
+
+  <div id="toast" hidden></div>
+</div>
+<script type="module" src="js/jogo.js"></script>
+</body>
+</html>

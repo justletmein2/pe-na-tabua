@@ -1,0 +1,100 @@
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  width: 100%; height: 100%; overflow: hidden; background: #1b1440; color: #fff;
+  font-family: "Trebuchet MS", system-ui, sans-serif;
+  -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
+  touch-action: none; overscroll-behavior: none;
+}
+#palco { position: fixed; inset: 0; }
+#tela { position: absolute; inset: 0; width: 100%; height: 100%; image-rendering: pixelated; image-rendering: crisp-edges; }
+[hidden] { display: none !important; }
+
+button { font: inherit; color: inherit; cursor: pointer; border: 0; }
+.grande, .sec {
+  display: block; width: 100%; margin-top: 12px; padding: 14px 18px; border-radius: 14px;
+  font-weight: 800; font-size: 18px; letter-spacing: .5px;
+}
+.grande { background: linear-gradient(#ffd23f, #ff9f1c); color: #3a1d00; box-shadow: 0 4px 0 #b35c00; }
+.grande:active { transform: translateY(3px); box-shadow: 0 1px 0 #b35c00; }
+.sec { background: #3b2f80; color: #fff; font-size: 15px; padding: 10px 14px; box-shadow: 0 3px 0 #221a52; }
+
+/* telas sobrepostas */
+.tela {
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  background: rgba(20, 12, 50, .78); padding: max(12px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+  overflow-y: auto; touch-action: pan-y; z-index: 10;
+}
+.caixa {
+  width: min(440px, 100%); max-height: 100%; overflow-y: auto; text-align: center; padding: 18px 20px;
+  background: #2a2163; border: 3px solid #ffd23f; border-radius: 18px; box-shadow: 0 8px 0 rgba(0,0,0,.35);
+}
+.caixa.larga { width: min(620px, 100%); text-align: left; }
+.caixa.larga h2 { text-align: center; }
+h1 { font-size: 34px; color: #ffd23f; text-shadow: 3px 3px 0 #d8312f, 6px 6px 0 #000; letter-spacing: 2px; }
+h2 { font-size: 22px; color: #ffd23f; margin-bottom: 8px; }
+p { line-height: 1.4; margin: 6px 0; }
+.sub { color: #9fe6ff; font-weight: 700; }
+.peq { font-size: 13px; opacity: .85; }
+.icone { font-size: 44px; }
+
+label { display: block; margin: 10px 0; font-size: 15px; }
+label small { display: block; opacity: .7; font-size: 12px; }
+label input[type=range] { width: 100%; margin-top: 4px; accent-color: #ffd23f; height: 28px; }
+label.linha { display: flex; align-items: center; gap: 10px; }
+label.linha input { width: 22px; height: 22px; accent-color: #ffd23f; }
+.botoes { display: flex; gap: 8px; flex-wrap: wrap; }
+.botoes > * { flex: 1 1 120px; }
+
+/* mostradores de volante (calibração e ajustes) */
+#calibVolante, #previa {
+  position: relative; width: 120px; height: 120px; margin: 12px auto; border-radius: 50%;
+  border: 10px solid #ffd23f; background: #1b1440;
+}
+#calibPonteiro, #previaPonteiro, #ponteiro {
+  position: absolute; left: 50%; top: 0; width: 6px; height: 50%; margin-left: -3px; background: #ff5a4e;
+  transform-origin: 50% 100%; border-radius: 3px;
+}
+#previaTxt { position: absolute; left: 0; right: 0; top: 104%; text-align: center; font-size: 12px; white-space: nowrap; }
+#previa { margin-bottom: 28px; width: 84px; height: 84px; border-width: 8px; }
+
+/* HUD */
+#hud { position: absolute; inset: 0; pointer-events: none; z-index: 2;
+  padding: max(6px, env(safe-area-inset-top)) max(10px, env(safe-area-inset-right)) 0 max(10px, env(safe-area-inset-left)); }
+#hudEsq, #hudDir { position: absolute; top: max(6px, env(safe-area-inset-top)); font-size: 15px; text-shadow: 2px 2px 0 #000; }
+#hudEsq { left: max(10px, env(safe-area-inset-left)); }
+#hudEsq b { color: #ffd23f; font-variant-numeric: tabular-nums; }
+#hudDir { right: max(10px, env(safe-area-inset-right)); text-align: right; }
+#hudDir b { display: block; font-size: 34px; color: #fff; line-height: 1; font-variant-numeric: tabular-nums; }
+.rot { font-size: 11px; color: #9fe6ff; font-weight: 800; letter-spacing: 1px; }
+#hudCentro { position: absolute; top: max(4px, env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 10px; }
+#btnPausa { pointer-events: auto; width: 40px; height: 40px; border-radius: 50%; background: rgba(0,0,0,.45); font-size: 22px; }
+#indicador { position: relative; width: 40px; height: 40px; border-radius: 50%; border: 5px solid rgba(255,210,63,.85); background: rgba(0,0,0,.35); }
+#ponteiro { width: 4px; margin-left: -2px; }
+
+#balao {
+  position: absolute; transform: translate(-50%, -100%); background: #fff; color: #222; font-weight: 800;
+  padding: 6px 10px; border-radius: 12px; font-size: 15px; white-space: nowrap; border: 3px solid #222;
+}
+#balao::after { content: ""; position: absolute; left: 50%; bottom: -12px; margin-left: -8px; border: 8px solid transparent; border-top-color: #222; }
+#contagem { position: absolute; left: 0; right: 0; top: 30%; text-align: center; font-size: 80px; font-weight: 900; color: #ffd23f; text-shadow: 5px 5px 0 #d8312f, 9px 9px 0 #000; }
+
+/* botões de jogo: o polegar esquerdo no TURBO, o direito no ACELERAR */
+#controles { position: absolute; inset: 0; pointer-events: none; z-index: 3; }
+.btnJogo {
+  position: absolute; bottom: max(14px, env(safe-area-inset-bottom)); pointer-events: auto; touch-action: none;
+  width: 22vw; max-width: 170px; height: 34vh; max-height: 170px; border-radius: 22px;
+  font-weight: 900; font-size: 15px; letter-spacing: 1px; color: #fff;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
+  background: rgba(255,255,255,.18); border: 3px solid rgba(255,255,255,.55); text-shadow: 2px 2px 0 #000;
+}
+#btnAcel { right: max(14px, env(safe-area-inset-right)); background: rgba(46, 204, 64, .35); }
+#btnTurbo { left: max(14px, env(safe-area-inset-left)); background: rgba(255, 90, 78, .3); }
+.btnJogo.ativo { background: rgba(255,255,255,.45); transform: scale(.96); }
+#btnTurbo.pronto { border-color: #ffd23f; box-shadow: 0 0 16px #ffd23f; }
+#barraTurbo { width: 80%; height: 12px; border-radius: 6px; background: rgba(0,0,0,.5); overflow: hidden; border: 2px solid #fff; }
+#barraTurboCheia { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #ff9f1c, #ffd23f); }
+
+#toast {
+  position: absolute; left: 50%; bottom: 20px; transform: translateX(-50%); background: #000c; padding: 10px 16px;
+  border-radius: 12px; z-index: 20; font-weight: 700; max-width: 90%; text-align: center;
+}
