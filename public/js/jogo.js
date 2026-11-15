@@ -19,7 +19,7 @@ const params = new URLSearchParams(location.search);
 // ---------- constantes ----------
 const PASSO = 1 / 60;
 const VOLTAS = 3;
-const ALT_CAM = 1000;
+const ALT_CAM = 1250;                       // altura da câmera (mais alto = vê mais pista)
 const FOV_BASE = 100;
 const PROF_BASE = 1 / Math.tan((FOV_BASE / 2) * Math.PI / 180);
 const Z_JOG = ALT_CAM * PROF_BASE;          // distância da câmera até o carro
@@ -78,14 +78,14 @@ const carros = () => (E.online ? E.remotos : E.npcs);
 let PERFIL = { tag: '', look: null, xp: 0, ach: {} };
 let cabecaJog = null, cabecasNpc = [];
 const distJog = () => (E.terminouEm != null ? VOLTAS * COMPR + E.pos : (E.volta - 1) * COMPR + E.pos);
-const escalaCarro = () => Math.max(1, Math.round((W * 0.27) / CARRO_W));
+const escalaCarro = () => Math.max(1, Math.floor((W * 0.25) / CARRO_W));   // carro ~1/4 da largura da tela
 const largCarro = () => (CARRO_W * escalaCarro()) / W;     // em "meias pistas"
 
 // ---------- tamanho da tela ----------
 function cenaNivelada() { return pref.nivelar && E.modo === 'sensor'; }
 function redimensionar() {
-  H = 216;
-  W = Math.max(216, Math.min(520, Math.round(H * innerWidth / innerHeight)));
+  H = 240;
+  W = Math.max(240, Math.min(580, Math.round(H * innerWidth / innerHeight)));
   if (cenaNivelada()) {
     // área maior que a tela, pra que girada ela continue cobrindo tudo
     const a = GIRO_MAX * Math.PI / 180;
@@ -365,7 +365,7 @@ function atualizar(dt) {
   E.x -= dx * pct * jSeg.curva * CENTRIFUGA * clima.aderencia;
 
   // abertura da câmera: mais rápido = visão mais aberta (sensação de velocidade)
-  const fov = FOV_BASE - 4 + 14 * Math.min(1.2, pct) + (turboAtivo ? 8 : 0);
+  const fov = FOV_BASE + 10 * Math.min(1.2, pct) + (turboAtivo ? 6 : 0);
   E.prof += (1 / Math.tan(fov / 2 * Math.PI / 180) - E.prof) * Math.min(1, dt * 3);
 
   const vmax = turboAtivo ? V_MAX * TURBO_V : V_MAX;
