@@ -53,7 +53,7 @@ let W = 384, H = 216, CW = 384, CH = 216, MX = 0, MY = 0, ESC_CSS = 1;
 let fundo = null;
 
 // ---------- preferências ----------
-const pref = { cor: 'vermelho', nivelar: true };
+const pref = { cor: 'vermelho', nivelar: true, bolinhas: false };
 try { Object.assign(pref, JSON.parse(localStorage.getItem('pnt-pref') || '{}')); } catch {}
 const salvarPref = () => { try { localStorage.setItem('pnt-pref', JSON.stringify(pref)); } catch {} };
 
@@ -66,7 +66,7 @@ const E = {
   acel: false, botaoTurbo: false,
   ceu: 0, morros: 0, t: 0, areiaDesde: 0,
   rostoAte: 0, reclamouEm: -9, cabeca: { x: 0, y: 0 }, luzesCarro: [],
-  virar: 0, roda: 0, prof: PROF_BASE, tremor: 0, angCena: 0,
+  virar: 0, roda: 0, prof: PROF_BASE, tremor: 0, angCena: 0, giroFiltro: 0, imuneAte: -9, fugir: 0,
   npcs: [], posicao: 6, musica: 0, terminouEm: null,
 };
 const distJog = () => (E.volta - 1) * COMPR + E.pos;
@@ -275,6 +275,7 @@ function desenharJogador() {
   if (fora && E.vel > 0) oy += Math.round(Math.random() * 2) - 1;
   else if (E.vel > V_MAX * 0.5 && Math.random() < 0.15) oy -= 1;
   g.save();
+  if (E.t < E.imuneAte && Math.floor(E.t * 12) % 2) g.globalAlpha = 0.45;
   if (E.girando > 0) {
     const fase = Math.cos(E.girando * 22);
     g.translate(W / 2, 0); g.scale(Math.abs(fase) < 0.25 ? 0.25 * Math.sign(fase || 1) : fase, 1); g.translate(-W / 2, 0);
@@ -350,7 +351,7 @@ function atualizar(dt) {
   const jSeg = segs[iJog];
   const pct = E.vel / V_MAX;
   const dx = dt * 2 * pct;
-  if (E.girando > 0) { E.girando -= dt; E.x -= Math.sign(E.x) * dt * 0.6; }
+  if (E.girando > 0) { E.girando -= dt; E.x += (E.t < E.imuneAte ? E.fugir * 1.1 : -Math.sign(E.x) * 0.6) * dt; }
   else E.x += dx * dir;
   E.x -= dx * pct * jSeg.curva * CENTRIFUGA * clima.aderencia;
 
@@ -377,10 +378,11 @@ function atualizar(dt) {
     }
   }
   // perigos
-  if (E.girando <= 0 && correndo && E.t > (E.perigoEm || -9) + 1.2) {
+  if (E.girando <= 0 && correndo && E.t > E.imuneAte) {
     const h = perigos.bateu(iJog, E.x, lc, E.t);
     if (h) {
-      E.perigoEm = E.t;
+      // fica invencível por 2 segundos e é empurrado pro lado livre, pra conseguir sair
+      E.imuneAte = E.t + 2; E.fugir = -h.lado;
       if (h.tipo === 'onda') { E.vel *= 0.45; E.x += h.lado * 0.5; E.tremor = 0.8; som.batida(); }
       else rodar(h.tipo === 'caminhao' ? 0.15 : 0.3, 1.2);
       reclamar(null, TIPOS_PERIGO[h.tipo].frases);
@@ -602,7 +604,7 @@ function novaCorrida() {
   clearInterval(contTimer);
   musica.parar();
   rand = params.get('semente') ? aleatorio(sementeDe(params.get('semente'))) : Math.random;
-  Object.assign(E, { pos: 0, x: 0, vel: 0, volta: 1, tempo: 0, tempoVolta: 0, voltas: [], turbo: 0, turboAte: 0, girando: 0, rostoAte: 0, pausado: false, tremor: 0, terminouEm: null, t: 0, reclamouEm: -9, perigoEm: -9 });
+  Object.assign(E, { pos: 0, x: 0, vel: 0, volta: 1, tempo: 0, tempoVolta: 0, voltas: [], turbo: 0, turboAte: 0, girando: 0, rostoAte: 0, pausado: false, tremor: 0, terminouEm: null, t: 0, reclamouEm: -9, imuneAte: -9, fugir: 0, giroFiltro: 0 });
   E.npcs = criarNpcs(pref.cor, rand, COMPR, SEG);
   E.posicao = E.npcs.length + 1;
   perigos.reiniciar();
@@ -666,6 +668,7 @@ function preencherAjustes() {
   $('cfgSom').checked = som.somLigado();
   $('cfgMusica').checked = musica.musicaLigada();
   $('cfgNivelar').checked = pref.nivelar;
+  $('cfgBolinhas').checked = pref.bolinhas;
 }
 for (const [id, k, f] of CAMPOS) {
   $(id).oninput = () => { volante.cfg[k] = +$(id).value; $('v' + id.slice(3)).textContent = f(volante.cfg[k]); salvarVolante(); };
@@ -673,6 +676,7 @@ for (const [id, k, f] of CAMPOS) {
 $('cfgInverter').onchange = () => { volante.cfg.inverter = $('cfgInverter').checked; salvarVolante(); };
 $('cfgSom').onchange = () => { som.ligarSom($('cfgSom').checked); };
 $('cfgMusica').onchange = () => { musica.ligarMusica($('cfgMusica').checked); };
+$('cfgBolinhas').onchange = () => { pref.bolinhas = $('cfgBolinhas').checked; salvarPref(); };
 $('cfgNivelar').onchange = () => { pref.nivelar = $('cfgNivelar').checked; salvarPref(); redimensionar(); };
 $('btnPadrao').onclick = () => { restaurarPadrao(); preencherAjustes(); toast('Ajustes de fábrica'); };
 $('btnCopiarAjustes').onclick = async () => {
@@ -734,8 +738,40 @@ function conferirDeitado() {
 function girarCena(dt) {
   let alvo = 0;
   if (cenaNivelada() && volante.ref != null) alvo = Math.max(-GIRO_MAX, Math.min(GIRO_MAX, giroAtual()));
-  E.angCena += (alvo - E.angCena) * Math.min(1, dt * 25);
+  const k = Math.min(1, dt * 9);
+  E.giroFiltro += (alvo - E.giroFiltro) * k;
+  E.angCena += (E.giroFiltro - E.angCena) * k;
   tela.style.transform = Math.abs(E.angCena) > 0.05 ? `rotate(${(-E.angCena).toFixed(2)}deg)` : '';
+}
+
+// ---------- bolinhas anti-enjoo ----------
+// Pontinhos nas bordas da tela que ficam nivelados com o horizonte e escorregam pro lado
+// contrário das curvas e das aceleradas, como os "sinais de movimento" do celular.
+const cues = $('bolinhas'), cg = cues.getContext('2d');
+const B = { x: 0, y: 0, velAntes: 0 };
+function bolinhas(dt) {
+  const ligar = pref.bolinhas && E.fase !== 'inicio';
+  cues.hidden = !ligar;
+  if (!ligar) return;
+  const dpr = Math.min(2, devicePixelRatio || 1), w = innerWidth, h = innerHeight;
+  if (cues.width !== Math.round(w * dpr) || cues.height !== Math.round(h * dpr)) { cues.width = Math.round(w * dpr); cues.height = Math.round(h * dpr); }
+  if (dt > 0) {
+    const pct = E.vel / V_MAX;
+    const curva = segs[Math.floor(((E.pos + Z_JOG) % COMPR) / SEG) % N].curva;
+    const acel = (E.vel - B.velAntes) / V_MAX / dt; B.velAntes = E.vel;
+    B.x += (-curva * pct * 14 - B.x) * Math.min(1, dt * 4);
+    B.y += (Math.max(-1, Math.min(1, acel)) * 22 - B.y) * Math.min(1, dt * 4);
+  }
+  cg.setTransform(dpr, 0, 0, dpr, 0, 0);
+  cg.clearRect(0, 0, w, h);
+  const a = -E.angCena * Math.PI / 180, ca = Math.cos(a), sa = Math.sin(a), cx = w / 2, cy = h / 2;
+  cg.fillStyle = 'rgba(255,255,255,.8)'; cg.strokeStyle = 'rgba(0,0,0,.6)'; cg.lineWidth = 1.5;
+  for (const lado of [-1, 1]) for (const col of [0.035, 0.085]) for (let y = -h; y <= h; y += 46) {
+    const px = lado * (w / 2 - w * col) + B.x, py = y + B.y;
+    const sx = cx + px * ca - py * sa, sy = cy + px * sa + py * ca;
+    if (sx < -10 || sx > w + 10 || sy < -10 || sy > h + 10) continue;
+    cg.beginPath(); cg.arc(sx, sy, 5, 0, Math.PI * 2); cg.fill(); cg.stroke();
+  }
 }
 
 // ---------- laço principal ----------
@@ -754,6 +790,7 @@ function quadro(agora) {
   }
   girarCena(dt);
   desenhar(parado ? 0 : dt);
+  bolinhas(parado ? 0 : dt);
   if (!$('hud').hidden) hud();
   if (!$('telaCalibra').hidden) $('calibPonteiro').style.transform = `rotate(${Math.max(-90, Math.min(90, giroAtual()))}deg)`;
   if (!$('telaAjustes').hidden) {

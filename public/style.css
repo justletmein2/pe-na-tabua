@@ -129,3 +129,5 @@ label.linha input { width: 22px; height: 22px; accent-color: #ffd23f; }
 #fimLista i { width: 14px; height: 14px; border-radius: 50%; border: 2px solid #000; }
 #fimLista b { flex: 1; }
 #fimLista em { font-style: normal; font-variant-numeric: tabular-nums; }
+
+#bolinhas { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1; }

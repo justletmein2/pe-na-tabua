@@ -70,9 +70,10 @@ export function atualizarNpcs(npcs, dt, ctx) {
     n.virar = Math.abs(dx) > 0.05 ? Math.sign(dx) : 0;
 
     // perigo pegou?
-    if (n.girando <= 0) {
+    if (n.girando > 0 && t < (n.imuneAte || 0)) n.x += n.fugir * 1.1 * dt;
+    if (n.girando <= 0 && t > (n.imuneAte || 0)) {
       const h = perigos.bateu(i, n.x, 0.24, t);
-      if (h) { n.girando = 0.9; n.vel *= 0.3; }
+      if (h) { n.girando = 0.9; n.vel *= 0.3; n.imuneAte = t + 2; n.fugir = -h.lado; n.alvoX = -h.lado * 0.6; }
     }
     n.dist += n.vel * dt;
     if (n.terminou == null && n.dist >= VOLTAS * COMPR) n.terminou = tempo;
