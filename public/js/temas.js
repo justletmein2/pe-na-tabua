@@ -301,6 +301,18 @@ function lobo(f) {
   p('#2a2c33', 6, 17, 4, 7 - b); p('#2a2c33', 16, 17, 4, 7 - a); p('#2a2c33', 9, 17, 3, 6 - a); p('#2a2c33', 14, 17, 3, 6 - b); // patas
   return c;
 }
+function lobisomem(f) {
+  // lobisomem marombeiro (visto de trás): costas peludas, sem camisa, bermuda jeans, braços pra cima
+  const [c, p] = novo(30, 40);
+  const a = f ? 2 : 0, b = f ? 0 : 2;
+  p('#5a3a26', 8, 10, 14, 14); p('#7a5236', 9, 11, 12, 10); p('#8a6040', 11, 12, 8, 3);          // costas
+  p('#5a3a26', 10, 1, 10, 10); p('#7a5236', 11, 2, 8, 7);                                      // cabeça
+  p('#5a3a26', 10, -2, 3, 5); p('#5a3a26', 17, -2, 3, 5);                                       // orelhas
+  p('#5a3a26', 2, 2 + a, 6, 4); p('#5a3a26', 1, 4 + a, 4, 9); p('#5a3a26', 22, 2 + b, 6, 4); p('#5a3a26', 25, 4 + b, 4, 9); // braços (bíceps!)
+  p('#2e5aa8', 8, 24, 14, 7); p('#3f6fd8', 9, 24, 12, 2);                                       // bermuda
+  p('#5a3a26', 9, 31, 4, 9 - a * 2); p('#5a3a26', 17, 31, 4, 9 - b * 2);                         // pernas
+  return c;
+}
 function florestaLonge() {
   const H = 70;
   const [c, p] = novo(512, H);
@@ -435,8 +447,10 @@ export function tema(id) {
       beira: [{ tipo: ['pinheiro1', 'pinheiro2', 'pinheiro3'], cada: 3, lado: -1, min: 1.4, max: 4.5 }, { tipo: ['pinheiro1', 'pinheiro2', 'pinheiro3'], cada: 3, lado: 1, min: 1.4, max: 4.5, desde: 1 },
         { tipo: 'samambaia', cada: 4, min: 1.15, max: 1.8 }, { tipo: 'pedra', cada: 23, min: 1.3, max: 2.2 }, { tipo: 'casa', cada: 220, min: 2.4 }],
       perigos: ['caminhao', 'onda', 'fogo'], skins: { onda: { nome: 'ENXURRADA!', icone: '🌊' }, fogo: { nome: 'MORCEGÃO GIGANTE!', icone: '🦇' }, caminhao: { nome: 'ÁRVORE CAÍDA!', icone: '🌲' } },
-      musicas: [1, 5], chuvaExtra: 0.45,
-      nomesNpc: ['Conde Zezinho', 'Vampirinha Lu', 'Dona Morcega', 'Edu Pálido', 'Bia Caninos'],
+      musicas: [1, 5], chuvaExtra: 0.45, rivalidade: true,
+      // dois times: vampiros x lobos (o primeiro é o vampiro galã que para pra posar no sol)
+      nomesNpc: ['Conde Purpurina', 'Vampirinha Lu', 'Dona Morcega', 'Lobo Marombeiro', 'Uivinha'],
+      timesNpc: ['vampiro', 'vampiro', 'vampiro', 'lobo', 'lobo'],
     },
     lua: {
       nome: 'Festival da Lua', icone: '🥮',
@@ -455,6 +469,7 @@ export function tema(id) {
   T.sprites = { ...base, ...T.sprites, arco: { img: arco(id === 'ia' ? '#ff2a2a' : '#ffd23f', id === 'ia' ? '#222' : '#d8312f'), mundo: 2.6, bate: 0 } };
   T.drone = [drone(0), drone(1)];
   T.lobo = [lobo(0), lobo(1)];
+  T.lobisomem = [lobisomem(0), lobisomem(1)];
   cache[id] = T;
   return T;
 }

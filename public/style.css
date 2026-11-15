@@ -181,3 +181,5 @@ label.linha input { width: 22px; height: 22px; accent-color: #ffd23f; }
 .seletor .sec, .opcao .sec { width: auto; margin: 0; padding: 6px 12px; }
 .opcao span { width: 44%; font-size: 13px; opacity: .85; text-align: left; }
 #salaOpcoes { background: rgba(0,0,0,.2); border-radius: 12px; padding: 4px 10px; margin: 6px 0; }
+
+#placarTimes { font-size: 18px; margin: 4px 0 8px; } #placarTimes b { color: #ffd23f; font-size: 22px; } #placarTimes small { font-size: 13px; opacity: .85; }

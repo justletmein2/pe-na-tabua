@@ -46,6 +46,7 @@
         <div class="col">
           <div id="piloto"></div>
           <div class="seletor"><button id="pistaAnt" class="sec">◀</button><b id="pistaNome"></b><button id="pistaProx" class="sec">▶</button></div>
+          <div id="timeSel" class="seletor" hidden><span class="peq">Na floresta:</span><button id="btnTime" class="sec">🐺 Time Lobos</button></div>
           <div id="escolhaCor"><canvas id="previaCarro" width="56" height="36"></canvas><div id="cores"></div></div>
           <p id="txtInicio" class="peq" hidden></p>
           <p id="dicaTeclado" class="peq" hidden>← → viram · ↑ (ou Z) acelera · Espaço (ou X) turbo</p>
@@ -162,7 +163,7 @@
       </div>
       <p id="salaEspera" class="peq"></p>
       <button id="btnComecar" class="grande" hidden>🏁 Começar corrida</button>
-      <div class="botoes"><button id="btnPilotoSala" class="sec">Meu piloto</button><button id="btnCorSala" class="sec">Trocar cor</button><button id="btnSairSala" class="sec">Sair da sala</button></div>
+      <div class="botoes"><button id="btnPilotoSala" class="sec">Meu piloto</button><button id="btnCorSala" class="sec">Trocar cor</button><button id="btnTimeSala" class="sec" hidden>Meu time</button><button id="btnSairSala" class="sec">Sair da sala</button></div>
     </div>
   </section>
 
@@ -170,6 +171,7 @@
     <div class="caixa">
       <h2 id="fimTitulo">🏁 Fim!</h2>
       <div id="podio"></div>
+      <p id="placarTimes" hidden></p>
       <ol id="fimLista"></ol>
       <p>Volta mais rápida: <b id="fimMelhor"></b></p>
       <p id="fimVoltas" class="peq"></p>

@@ -62,10 +62,15 @@ function lookVampiro(r) {
   return { ...AV.lookPadrao(), tipo: 'pessoa', pele: 'p1', cabelo: um(['curto', 'longo', 'topete', 'franja', 'lado', 'espetado']), corCabelo: r() < 0.75 ? 'preto' : 'castanho',
     roupa: r() < 0.7 ? 'heroi' : 'smoking', corRoupa: 'preto', olhos: 'normal', boca: 'dentuco', barba: 'nada', chapeu: 'nada', acessorio: 'nada' };
 }
+function lookLobisomem(r) {
+  const AV = boneco.av(); if (!AV) return null;
+  return { ...AV.lookPadrao(), tipo: 'pessoa', pele: r() < 0.5 ? 'p3' : 'p4', cabelo: r() < 0.5 ? 'blackpower' : 'cacheado', corCabelo: r() < 0.5 ? 'castanho' : 'preto',
+    barba: 'cheia', roupa: 'camiseta', corRoupa: 'laranja', chapeu: 'gatinho', olhos: 'normal', boca: 'risada', acessorio: 'nada' };
+}
 function prepararNpcsTema() {
   if (!TEMA || TEMA._looks || !boneco.av() || TEMA.id !== 'vampiros') return;
   const r = Math.random;
-  TEMA._looks = [0, 1, 2, 3, 4].map(() => lookVampiro(r));
+  TEMA._looks = TEMA.timesNpc.map(t => (t === 'lobo' ? lookLobisomem(r) : lookVampiro(r)));
   Promise.all(TEMA._looks.map(l => boneco.cabecas(l))).then(c => { TEMA._cabecas = c; });
 }
 const looksNpc = () => (TEMA && TEMA._looks) || npcLooks;
@@ -77,7 +82,7 @@ let W = 384, H = 216, CW = 384, CH = 216, MX = 0, MY = 0, ESC_CSS = 1;
 let fundo = null;
 
 // ---------- preferências ----------
-const pref = { cor: 'vermelho', nivelar: true, bolinhas: false, pista: 'praia', ajuda: true };
+const pref = { cor: 'vermelho', nivelar: true, bolinhas: false, pista: 'praia', ajuda: true, time: 'lobo' };
 try { Object.assign(pref, JSON.parse(localStorage.getItem('pnt-pref') || '{}')); } catch {}
 const salvarPref = () => { try { localStorage.setItem('pnt-pref', JSON.stringify(pref)); } catch {} };
 
@@ -246,7 +251,7 @@ function desenhar(dt) {
   const lc = largCarro();
   if (TEMA.lobos && E.lobos) for (const l of E.lobos) {
     const z = l.dist + Z_JOG, p = ((z % COMPR) + COMPR) % COMPR;
-    juntar({ i: Math.floor(p / SEG), pct: (p % SEG) / SEG, x: l.x, img: TEMA.lobo[Math.floor(l.fase * 8) % 2], mundo: 0.24, alt: 0 });
+    juntar({ i: Math.floor(p / SEG), pct: (p % SEG) / SEG, x: l.x, img: (l.maromba ? TEMA.lobisomem : TEMA.lobo)[Math.floor(l.fase * 8) % 2], mundo: l.maromba ? 0.26 : 0.24, alt: 0 });
   }
   for (const n of carros()) {
     if (n.oculto) continue;
@@ -293,6 +298,7 @@ function desenhar(dt) {
         else g.drawImage(o.img, Math.round(sx), Math.round(sy), Math.round(dw), Math.round(dh));
         g.restore();
         if (o.npc && TEMA.brilho && clima.tempo === 'limpo' && clima.hora !== 'noite') brilhar(sx + dw * 0.18, sy, dw * 0.3, dh * 0.4);
+        if (o.npc && o.npc.posando > 0) { brilhar(sx, sy - dh * 0.2, dw, dh * 0.8); brilhar(sx, sy - dh * 0.2, dw, dh * 0.8); legenda('✨ posando ✨', sx + dw / 2, sy - dh * 0.25, dw); }
         if (o.npc) { const ly = sy + dh * 25.5 / 44; luzes.push([sx + dw * 9 / 56, ly, dw * 0.16, 'rgba(255,40,30,A)'], [sx + dw * 47 / 56, ly, dw * 0.16, 'rgba(255,40,30,A)']); }
         if (o.luz) luzes.push([sx + dw / 2, sy + dh / 2, dw * 0.7, o.luz]);
       }
@@ -321,6 +327,12 @@ function brilhar(x, y, w, h) {
     g.fillStyle = k % 2 ? '#ffffff' : '#bff4ff';
     g.fillRect(px - t, py, t * 3, t); g.fillRect(px, py - t, t, t * 3);
   }
+}
+function legenda(txt, x, y, larg) {
+  const t = Math.max(6, Math.min(11, Math.round(larg / 5)));
+  g.font = `bold ${t}px sans-serif`; g.textAlign = 'center';
+  g.fillStyle = '#000'; g.fillText(txt, Math.round(x) + 1, Math.round(y) + 1);
+  g.fillStyle = '#ffe9ff'; g.fillText(txt, Math.round(x), Math.round(y));
 }
 // neblina perto do horizonte
 let gradNeblina = null;
@@ -562,6 +574,7 @@ function atualizar(dt) {
     }
   }
   atualizarLobos(dt, dj, correndo, noAr, lc);
+  if (!E.online || M.host) atualizarGala(dt, dj, correndo);
   E.x = Math.max(-3, Math.min(3, E.x));
 
   // turbo: enche quando fica na pista sem bater
@@ -596,6 +609,22 @@ function atualizar(dt) {
   som.motor(Math.min(1.3, pct), acel, turboAtivo);
 }
 
+// o vampiro galã às vezes para no meio da pista pra posar no sol (desvie dele!)
+function atualizarGala(dt, dj, correndo) {
+  if (!TEMA.rivalidade || !E.npcs.length || !correndo) return;
+  const gala = E.npcs[0];
+  if (gala.proxPose == null) gala.proxPose = 10 + Math.random() * 8;
+  if (gala.posando > 0) {
+    gala.posando -= dt;
+    gala.vel = Math.max(0, gala.vel - V_MAX * 2.5 * dt);
+    gala.dist -= gala.vel * dt * 0.5;
+    gala.alvoX = 0; gala.x += (0 - gala.x) * Math.min(1, dt * 3);
+    if (gala.posando <= 0) gala.proxPose = E.tempo + 14 + Math.random() * 10;
+  } else if (E.tempo > gala.proxPose && gala.terminou == null) {
+    const dz = (gala.dist - dj) / SEG;
+    if (dz > 25 && dz < 140) gala.posando = 3.2;
+  }
+}
 function atualizarLobos(dt, dj, correndo, noAr, lc) {
   if (!TEMA.lobos) return;
   E.lobos = E.lobos || [];
@@ -607,6 +636,8 @@ function atualizarLobos(dt, dj, correndo, noAr, lc) {
       E.lobos.push({ dist: base + k * 260 + Math.random() * 300, x: fora ? (Math.random() < 0.5 ? -1 : 1) * (1.4 + Math.random() * 2) : (Math.random() * 1.6 - 0.8),
         fase: Math.random() * 6, vel: V_MAX * (0.42 + Math.random() * 0.12), fora });
     }
+    // de vez em quando vem junto o lobisomem marombeiro, sem camisa, no meio da pista
+    if (TEMA.lobisomem && Math.random() < 0.6) E.lobos.push({ dist: base + 200, x: Math.random() * 1.2 - 0.6, fase: 0, vel: V_MAX * 0.5, fora: false, maromba: true });
     uivo();
   }
   for (const l of E.lobos) {
@@ -616,7 +647,7 @@ function atualizarLobos(dt, dj, correndo, noAr, lc) {
     // encostou num lobo: susto e perde velocidade (o lobo pula pro lado)
     if (!l.fora && !noAr && E.girando <= 0 && Math.abs(l.dist - dj) < 230 && Math.abs(l.x - E.x) < lc * 0.8) {
       E.vel *= 0.6; E.tremor = 0.7; som.batida(); l.fora = true; l.pulou = l.x > E.x ? 1 : -1;
-      reclamar(null, ['Sai da frente, lobo!', 'Tem lobo na pista!', 'Auuuu!', 'Que bicho peludo!']);
+      reclamar(null, l.maromba ? ['Bota uma camisa, rapaz!', 'Que tanquinho é esse?!', 'Vai malhar em outro lugar!', 'Isso é corrida, não academia!'] : ['Sai da frente, lobo!', 'Tem lobo na pista!', 'Auuuu!', 'Que bicho peludo!']);
     }
   }
   E.lobos = E.lobos.filter(l => l.dist > dj - 30 * SEG && l.dist < dj + 300 * SEG && Math.abs(l.x) < 6);
@@ -881,10 +912,10 @@ function terminar() {
   musica.parar();
   som.bip(660, 0.15); setTimeout(() => som.bip(880, 0.15), 160); setTimeout(() => som.bip(1320, 0.4), 320);
   if (E.online) return terminarOnline();
-  const lista = [{ nome: PERFIL.tag || 'Você', tempo: E.tempo, eu: true, cor: pref.cor, look: PERFIL.look }];
+  const lista = [{ nome: PERFIL.tag || 'Você', tempo: E.tempo, eu: true, cor: pref.cor, look: PERFIL.look, time: TEMA.rivalidade ? pref.time : null }];
   E.npcs.forEach((n, k) => {
     const tempo = n.terminou != null ? n.terminou : E.tempo + Math.max(0, VOLTAS * COMPR - n.dist) / Math.max(n.vel, V_MAX * 0.6);
-    lista.push({ nome: n.nome, tempo, cor: n.cor, look: looksNpc()[k] });
+    lista.push({ nome: n.nome, tempo, cor: n.cor, look: looksNpc()[k], time: TEMA.timesNpc ? TEMA.timesNpc[k] : null });
   });
   lista.sort((a, b) => a.tempo - b.tempo);
   const minha = lista.findIndex(l => l.eu) + 1;
@@ -892,6 +923,7 @@ function terminar() {
   $('fimTitulo').textContent = minha === 1 ? '🏆 Você venceu!' : `🏁 Você chegou em ${minha}º`;
   $('fimLista').innerHTML = lista.map((l, i) => `<li class="${l.eu ? 'eu' : ''}"><span>${medalha[i] || (i + 1) + 'º'}</span><i style="background:${corPorId(l.cor).c[0]}"></i><b>${l.nome}</b><em>${fmt(l.tempo)}</em></li>`).join('');
   podio(lista.slice(0, 3).map(l => ({ nome: l.nome, look: l.look })));
+  placarTimes(lista);
   $('fimMelhor').textContent = fmt(Math.min(...E.voltas));
   $('fimVoltas').textContent = E.voltas.map((v, i) => `Volta ${i + 1}: ${fmt(v)}`).join(' · ');
   modoFim(false);
@@ -1080,7 +1112,7 @@ function modoFim(online) {
 
 // ---------- salas (multiplayer) ----------
 const M = { code: null, host: false, meta: null, players: {}, corrida: { estado: {}, resultado: {}, perigos: {} }, sairSala: null, sairCorrida: null, rodada: -1, enviadoEm: 0, perigosVistos: new Set(), calibrado: false, xpDado: false };
-const publico = () => ({ name: PERFIL.tag, look: PERFIL.look || null, lvl: boneco.nivelDe(PERFIL.xp), cor: pref.cor });
+const publico = () => ({ name: PERFIL.tag, look: PERFIL.look || null, lvl: boneco.nivelDe(PERFIL.xp), cor: pref.cor, time: pref.time });
 const linkSala = code => location.origin + location.pathname + '?sala=' + code + (rede.LOCAL ? '&local=1' : '');
 
 async function criarSalaAgora() {
@@ -1129,7 +1161,24 @@ function irInicio() {
 }
 $('btnSairSala').onclick = irInicio;
 $('btnComoJogar').onclick = () => mostrar('telaComo');
-function mostrarPista() { $('pistaNome').textContent = nomePista(pref.pista); }
+const nomeTime = t => (t === 'vampiro' ? '🧛 Time Vampiros' : '🐺 Time Lobos');
+function mostrarPista() {
+  $('pistaNome').textContent = nomePista(pref.pista);
+  $('timeSel').hidden = pref.pista !== 'vampiros';
+  $('btnTime').textContent = nomeTime(pref.time);
+}
+$('btnTime').onclick = () => { pref.time = pref.time === 'lobo' ? 'vampiro' : 'lobo'; salvarPref(); mostrarPista(); };
+$('btnTimeSala').onclick = () => { pref.time = pref.time === 'lobo' ? 'vampiro' : 'lobo'; salvarPref(); if (M.code) rede.atualizarEu(M.code, { time: pref.time }); };
+// placar da rivalidade: pontos por posição (1º ganha mais)
+function placarTimes(lista) {
+  const el = $('placarTimes');
+  if (!TEMA.rivalidade) { el.hidden = true; return; }
+  const pts = { vampiro: 0, lobo: 0 }, n = lista.length;
+  lista.forEach((l, i) => { if (l.time) pts[l.time] += n - i; });
+  const v = pts.vampiro, lb = pts.lobo;
+  el.hidden = false;
+  el.innerHTML = `🧛 Vampiros <b>${v}</b> × <b>${lb}</b> Lobos 🐺<br><small>${v === lb ? 'Empate! A floresta continua dividida.' : v > lb ? 'Os vampiros dominam a floresta! ✨' : 'Os lobos dominam a floresta! 🌕'}</small>`;
+}
 function trocarPista(d) { const i = PISTAS.indexOf(pref.pista); pref.pista = PISTAS[(i + d + PISTAS.length) % PISTAS.length]; salvarPref(); carregarPista(pref.pista); mostrarPista(); }
 $('pistaAnt').onclick = () => trocarPista(-1);
 $('pistaProx').onclick = () => trocarPista(1);
@@ -1166,13 +1215,16 @@ function aoMudarSala() {
 function desenharSala(msg) {
   $('salaCodigo').textContent = M.code || '';
   const lista = Object.entries(M.players).filter(([, p]) => p.online);
-  $('salaJogadores').innerHTML = lista.map(([id, p]) => `<li>${p.look ? boneco.frenteSVG(p.look, 44) : '<span class="semB">🙂</span>'}<i style="background:${corPorId(p.cor).c[0]}"></i><b>${esc(p.name || '?')}</b>${M.meta && id === M.meta.host ? '<small>anfitrião</small>' : ''}${id === rede.meuId() ? '<small>você</small>' : ''}</li>`).join('') || '<li>Entrando…</li>';
+  const emojiTime = p => (M.meta && M.meta.pista === 'vampiros' ? (p.time === 'vampiro' ? ' 🧛' : ' 🐺') : '');
+  $('salaJogadores').innerHTML = lista.map(([id, p]) => `<li>${p.look ? boneco.frenteSVG(p.look, 44) : '<span class="semB">🙂</span>'}<i style="background:${corPorId(p.cor).c[0]}"></i><b>${esc(p.name || '?')}${emojiTime(p)}</b>${M.meta && id === M.meta.host ? '<small>anfitrião</small>' : ''}${id === rede.meuId() ? '<small>você</small>' : ''}</li>`).join('') || '<li>Entrando…</li>';
   $('btnComecar').hidden = !M.host || (M.meta && M.meta.status !== 'lobby' && msg);
   const m = M.meta || {};
   $('salaPista').textContent = nomePista(m.pista || 'praia');
   $('salaBots').textContent = (m.bots ?? 3) === 0 ? 'nenhum' : (m.bots ?? 3);
   $('salaAjuda').textContent = m.ajuda === false ? 'desligada' : 'ligada';
   document.querySelectorAll('.soAnfitriao').forEach(b => { b.hidden = !M.host; });
+  $('btnTimeSala').hidden = m.pista !== 'vampiros';
+  $('btnTimeSala').textContent = 'Meu time: ' + nomeTime(pref.time);
   $('salaEspera').textContent = msg || (M.host
     ? (lista.length < 2 ? 'Mande o link pros amigos! (Dá pra começar sozinho pra testar.)' : 'Todo mundo dentro? Pode começar!')
     : 'Esperando o anfitrião começar a corrida…');
@@ -1196,7 +1248,7 @@ $('btnComecar').onclick = async () => {
     const usadas = Object.values(M.players).filter(p => p.online).map(p => p.cor);
     const livres = CORES_CARRO.filter(k => !usadas.includes(k.id));
     const nomes = TEMA.nomesNpc || PILOTOS.map(p => p.nome);
-    const botsInfo = Array.from({ length: M.meta.bots ?? 3 }, (_, j) => ({ nome: nomes[j], cor: (livres[j] || CORES_CARRO[j]).id, look: looksNpc()[j] || null }));
+    const botsInfo = Array.from({ length: M.meta.bots ?? 3 }, (_, j) => ({ nome: nomes[j], cor: (livres[j] || CORES_CARRO[j]).id, look: looksNpc()[j] || null, time: TEMA.timesNpc ? TEMA.timesNpc[j] : null }));
     await rede.atualizarMeta(M.code, { pista, botsInfo, ajuda: M.meta.ajuda !== false, status: 'contagem', rodada: ((M.meta && M.meta.rodada) || 0) + 1, inicio: rede.agora() + 6000, clima: c, musica: mus, semente: Math.random().toString(36).slice(2, 8) });
   } catch (e) { toast('Não deu pra começar: ' + (e.message || e), 3000); }
   finally { $('btnComecar').disabled = false; }
@@ -1344,7 +1396,8 @@ function desenharFimOnline(eu1) {
   if (eu1 && !res[eu]) res[eu] = { tempo: E.tempo, melhor: Math.min(...E.voltas), nome: PERFIL.tag };
   // carros do computador entram na classificação como "jogadores" de mentira
   const pl = { ...M.players };
-  E.bots.forEach((b, j) => { const id = 'bot' + j; pl[id] = { name: b.nome + ' 🤖', cor: b.cor, look: b.look, online: true }; if (b.terminou != null) res[id] = { tempo: b.terminou, melhor: 999, nome: b.nome }; });
+  const info = (M.meta && M.meta.botsInfo) || [];
+  E.bots.forEach((b, j) => { const id = 'bot' + j; pl[id] = { name: b.nome + ' 🤖', cor: b.cor, look: b.look, online: true, time: (info[j] || {}).time }; if (b.terminou != null) res[id] = { tempo: b.terminou, melhor: 999, nome: b.nome }; });
   const chegaram = Object.entries(res).sort((a, b) => a[1].tempo - b[1].tempo);
   const est = M.corrida.estado || {};
   const faltam = Object.entries(pl).filter(([id]) => !res[id] && (est[id] || id.startsWith('bot')));
@@ -1358,6 +1411,7 @@ function desenharFimOnline(eu1) {
   const rapida = chegaram.filter(([id]) => !id.startsWith('bot')).reduce((a, [id, r]) => (!a || r.melhor < a.r.melhor ? { id, r } : a), null);
   $('fimMelhor').textContent = rapida ? `${fmt(rapida.r.melhor)} (${quem(rapida.id, rapida.r)})` : '–';
   $('fimVoltas').textContent = 'Suas voltas: ' + E.voltas.map((v, i) => `${i + 1}ª ${fmt(v)}`).join(' · ');
+  placarTimes(chegaram.map(([id]) => ({ time: (pl[id] || {}).time })).concat(faltam.map(([id]) => ({ time: (pl[id] || {}).time }))));
 }
 function voltarPraSala() {
   musica.parar();
