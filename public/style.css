@@ -183,3 +183,10 @@ label.linha input { width: 22px; height: 22px; accent-color: #ffd23f; }
 #salaOpcoes { background: rgba(0,0,0,.2); border-radius: 12px; padding: 4px 10px; margin: 6px 0; }
 
 #placarTimes { font-size: 18px; margin: 4px 0 8px; } #placarTimes b { color: #ffd23f; font-size: 22px; } #placarTimes small { font-size: 13px; opacity: .85; }
+
+/* botão de voltar pro hub (portal com todos os jogos) */
+.voltarHub { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; max-width: 360px; margin: 14px auto 0;
+  padding: 12px 16px; border-radius: 16px; font: inherit; font-weight: 800; font-size: 16px; text-decoration: none;
+  color: #fff; background: rgba(255,255,255,.16); border: 2px solid rgba(255,255,255,.45); box-shadow: 0 4px 0 rgba(0,0,0,.22);
+  -webkit-tap-highlight-color: transparent; }
+.voltarHub:active { transform: translateY(3px); box-shadow: 0 1px 0 rgba(0,0,0,.22); }
