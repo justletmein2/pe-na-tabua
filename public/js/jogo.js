@@ -1055,7 +1055,30 @@ function desenharPiloto() {
   $('btnEditarPiloto').onclick = () => abrirEditor();
 }
 let rascunho = null, depoisEditor = null;
-function abrirEditor(depois) {
+// a tela de personalizar é a MESMA do portal e dos outros jogos (forma-palavras/js/boneco-editor.js):
+// o boneco é um só, mudou aqui muda em todos. Se ela não carregar, usa o editor antigo daqui.
+async function abrirEditor(depois) {
+  let ed = null;
+  try { ed = await import(new URL('../../forma-palavras/js/boneco-editor.js', import.meta.url).href); } catch {}
+  if (ed) {
+    const r = await ed.abrirEditorBoneco({ perfil: PERFIL, pedirNome: true, salvar: async ({ look, tag }) => {
+      if (rede.conectado()) {
+        if (tag !== PERFIL.tag && !(await rede.reservarTag(tag, PERFIL.tag))) return 'Esse nome já tem dono, escolha outro 🙂';
+        await rede.salvarPerfil({ tag, look });
+      }
+      PERFIL.tag = tag; PERFIL.look = { ...look };
+      try { localStorage.setItem('pnt-look', JSON.stringify(PERFIL.look)); } catch {}
+      return null;
+    } });
+    if (!r) return;
+    await atualizarCabeca(); desenharPiloto();
+    if (M.code) rede.atualizarEu(M.code, publico()).catch(() => {});
+    if (depois) depois();
+    return;
+  }
+  abrirEditorAntigo(depois);
+}
+function abrirEditorAntigo(depois) {
   depoisEditor = depois || null;
   if (!boneco.av()) { toast('Precisa de internet pra carregar os bonecos', 2500); return; }
   rascunho = { ...(PERFIL.look || boneco.av().lookPadrao()) };
