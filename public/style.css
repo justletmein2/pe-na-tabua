@@ -190,3 +190,44 @@ label.linha input { width: 22px; height: 22px; accent-color: #ffd23f; }
   color: #fff; background: rgba(255,255,255,.16); border: 2px solid rgba(255,255,255,.45); box-shadow: 0 4px 0 rgba(0,0,0,.22);
   -webkit-tap-highlight-color: transparent; }
 .voltarHub:active { transform: translateY(3px); box-shadow: 0 1px 0 rgba(0,0,0,.22); }
+
+
+/* =====================================================================
+   PALETA (Céu, Areia ou Doce: o jogador escolhe; vem de /forma-palavras/js/paleta.js)
+   Vale pros menus e telas. A pista e o painel da corrida continuam como estão.
+   ===================================================================== */
+:root { --p-fundo1: #eaf5ff; --p-fundo2: #cfe6ff; --p-painel: #ffffff; --p-texto: #12233f; --p-suave: #56667f; --p-a1: #2f7bf6; --p-a2: #ff8a3d;
+  --p-sombra: #bcdcff; --p-borda: rgba(18,35,63,.13); --p-btn1: #ff9a52; --p-btn2: #ff7a2e; --p-btn-txt: #fff; --p-btn-sombra: #c0561a; --p-sec: #e3efff; }
+.tela { background: color-mix(in srgb, var(--p-fundo1) 82%, transparent); }
+.caixa { background: var(--p-painel); color: var(--p-texto); border: 3px solid var(--p-a1); box-shadow: 0 8px 0 var(--p-borda), 0 16px 40px rgba(0,0,0,.18); }
+.caixa h2, .tela h2 { color: var(--p-a1); }
+.sub, .link, .rot2 { color: var(--p-a1); }
+.peq { color: var(--p-suave); opacity: 1; }
+.grande { background: linear-gradient(var(--p-btn1), var(--p-btn2)); color: var(--p-btn-txt); box-shadow: 0 4px 0 var(--p-btn-sombra); }
+.grande:active { box-shadow: 0 1px 0 var(--p-btn-sombra); }
+.sec, .parte button, .degrau .bloco { background: var(--p-sec); color: var(--p-texto); box-shadow: 0 3px 0 var(--p-borda); }
+#salaJogadores small { background: var(--p-sec); color: var(--p-texto); }
+#piloto, #salaOpcoes { background: var(--p-sec); }
+#salaJogadores li { background: color-mix(in srgb, var(--p-a1) 7%, transparent); }
+#fimLista li.eu { background: color-mix(in srgb, var(--p-a2) 22%, transparent); }
+.codigo { color: var(--p-a1); text-shadow: 3px 3px 0 var(--p-sombra); }
+#placarTimes b { color: var(--p-a2); }
+.cor { border-color: var(--p-borda); }
+.cor.sel { border-color: var(--p-a1); box-shadow: 0 0 0 2px var(--p-painel), 0 0 10px var(--p-a1); }
+label input[type=range], label.linha input { accent-color: var(--p-a1); }
+.entrarSala input, #nomePiloto { background: var(--p-painel); color: var(--p-texto); border-color: var(--p-borda); }
+.voltarHub { color: var(--p-a1); background: var(--p-painel); border-color: var(--p-borda); box-shadow: 0 4px 0 var(--p-borda); }
+.rotCores { font-weight: 800; font-size: 14px; color: var(--p-suave); margin: 14px 0 6px; }
+#seletorCores { margin-bottom: 6px; }
+
+/* título: chega acelerando, inclinado, e fica tremendo como motor ligado */
+.titulo { position: relative; overflow: hidden; padding: 4px 0; }
+.titulo h1 { font-family: Bungee, "Trebuchet MS", sans-serif; font-weight: 400; font-size: min(38px, 9vw); letter-spacing: 1px; color: var(--p-a2);
+  text-shadow: 3px 3px 0 var(--p-texto); white-space: nowrap; }
+.titulo .corre { display: inline-block; transform: skewX(-12deg); animation: chega .9s cubic-bezier(.2,.9,.25,1.15) both, motor .12s linear .9s infinite alternate, arrancada 5s ease-in-out 1.5s infinite; }
+@keyframes chega { from { transform: translateX(120%) skewX(-24deg); } to { transform: translateX(0) skewX(-12deg); } }
+@keyframes motor { from { translate: 0 0; } to { translate: 0 -1.5px; } }
+@keyframes arrancada { 0%, 82%, 100% { transform: skewX(-12deg); } 88% { transform: translateX(-3%) skewX(-20deg); } 94% { transform: translateX(2%) skewX(-8deg); } }
+.titulo .vento { position: absolute; left: 0; height: 4px; border-radius: 2px; background: var(--p-a2); opacity: .35; animation: vento 1.1s linear infinite; }
+@keyframes vento { from { transform: translateX(110vw); } to { transform: translateX(-120px); } }
+@media (prefers-reduced-motion: reduce) { .titulo .corre, .titulo .vento { animation: none; } }

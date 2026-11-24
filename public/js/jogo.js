@@ -1509,3 +1509,12 @@ window.__pnt = { E, volante, V_MAX, novaCorrida, irCalibrar, clima, pref, M, PER
 prepararInicio();
 carregarPerfil();
 requestAnimationFrame(quadro);
+
+// cores dos menus (Céu, Areia ou Doce): a mesma escolha do portal
+(async () => {
+  let P = null;
+  try { P = await import(new URL('../../forma-palavras/js/paleta.js', import.meta.url).href); } catch {}
+  if (!P) { const r = document.querySelector('.rotCores'); if (r) r.hidden = true; return; }
+  P.aplicarPaleta();
+  P.montarSeletor($('seletorCores'));
+})();

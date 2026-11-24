@@ -3,10 +3,13 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<meta name="theme-color" content="#1b1440">
+<meta name="theme-color" content="#eaf5ff">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <title>Pé na Tábua</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bungee&display=swap">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -41,7 +44,8 @@
   <!-- telas -->
   <section id="telaInicio" class="tela">
     <div class="caixa menu">
-      <h1>PÉ NA TÁBUA</h1>
+      <div class="titulo"><i class="vento" style="top:18%;width:60px"></i><i class="vento" style="top:62%;width:96px;animation-delay:.45s"></i><i class="vento" style="top:40%;width:44px;animation-delay:.8s"></i>
+        <h1 aria-label="Pé na Tábua"><span class="corre">PÉ NA TÁBUA</span></h1></div>
       <div class="colunas">
         <div class="col">
           <div id="piloto"></div>
@@ -112,6 +116,8 @@
       <label class="linha"><input type="checkbox" id="cfgBolinhas"> Bolinhas anti-enjoo (nas bordas da tela)</label>
       <label class="linha"><input type="checkbox" id="cfgSom"> Ronco do motor e efeitos</label>
       <label class="linha"><input type="checkbox" id="cfgMusica"> Música</label>
+      <p class="rotCores">Cores dos menus (valem também no portal)</p>
+      <div id="seletorCores"></div>
       <div class="botoes">
         <button id="btnRecalibrar" class="sec">Recalibrar</button>
         <button id="btnPadrao" class="sec">Voltar ao padrão</button>
